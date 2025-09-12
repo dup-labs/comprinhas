@@ -7,7 +7,7 @@ const ListItem = ({onRename,onDelete,item,index,listLength}:any) => {
     const c = LIST_PALETTE[fromBottom % LIST_PALETTE.length]
 
   return(
-    <li key={item.id} className={`flex items-start flex-col gap-3 p-5 pt-10 pb-10 -mt-6 md:-mt-0  ${c.bg} ${c.text} ${c.ring} rounded-2xl max-w-48 md:w-full md:min-w-92 shadow-[0_-10px_20px_-10px_rgb(0_0_0/.25)]`}>
+    <li key={item.id} className={`flex items-start flex-col gap-3 p-5 pt-10 pb-10 -mt-10 md:-mt-0 ${c.bg} ${c.text} ${c.ring} rounded-2xl w-full max-w-full md:max-w-48  md:min-w-92 shadow-[0_-10px_20px_-10px_rgb(0_0_0/.25)]`}>
       <Link href={`/dashboard/${item.id}`} className="flex-1 w-full">
       <div className="flex justify-between w-full items-center mb-4">
         <div className={`font-bold ${c.text} text-2xl`}>

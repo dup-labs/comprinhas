@@ -6,6 +6,7 @@ import ListItem from '../components/ListItem'
 import { useDisclosure } from '@/hooks/useDisclosure'
 import Modal from '../components/Modal'
 
+
 type List = { id: string; name: string; monthly_budget_cents: number; created_at: string }
 
 export default function Lists() {
