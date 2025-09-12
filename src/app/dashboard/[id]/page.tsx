@@ -1,0 +1,29 @@
+import { createClientServer } from '@/lib/supabase-server'
+import Link from 'next/link'
+import Items from './Items'
+import Summary from './Summary'
+
+export default async function ListPage({ params }: { params: { id: string } }) {
+  const { id } = await params; 
+
+  const supabase = await createClientServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) return <main className="p-6">Sem login. <a href="/">Voltar</a></main>
+
+  const { data: list } = await supabase.from('lists').select('*').eq('id', id).single()
+
+  if (!list) return <main className="p-6">Lista não encontrada. <Link href="/dashboard">Voltar</Link></main>
+
+  return (
+    <main className="p-6 max-w-2xl mx-auto space-y-4">
+      <Link href="/dashboard" className="underline">← Voltar</Link>
+      <h1 className="text-xl font-semibold">{list.name}</h1>
+      <p>Orçamento: R$ {(list.monthly_budget_cents/100).toFixed(2)}</p>
+      <Summary listId={id} budgetCents={list.monthly_budget_cents} />
+      <h2>Itens</h2>
+      <Items listId={id} budgetCents={list.monthly_budget_cents} /> 
+      {/* <div className="text-gray-600">Próximo: itens da lista.</div> */}
+    </main>
+  )
+}
