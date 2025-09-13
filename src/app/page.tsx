@@ -1,28 +1,20 @@
-'use client'
 import { redirect } from 'next/navigation'
-import { createClientBrowser } from '@/lib/supabase-browser'
-import Button from './components/Button'
+import { createClientServer } from '@/lib/supabase-server'
+import LoginButton from './components/LoginButton' // botão client que chama o OAuth
 
 export default async function Home() {
-  
-
-  // se já logado, manda direto para as listas
-  
-  const supabase = createClientBrowser()
+  // cookies() agora é assíncrono dentro do helper → aguarde aqui
+  const supabase = await createClientServer()
   const { data: { user } } = await supabase.auth.getUser()
+
+  // já logado? manda pro dashboard
   if (user) redirect('/dashboard')
 
-  async function signIn() {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` }
-    })
-  }
+  // não logado → mostra logo + botão
   return (
-    <div className='flex items-center justify-center h-full flex-col gap-10'>
+    <main className="flex h-dvh flex-col items-center justify-center gap-10 p-6">
       <img src="/logo.svg" alt="Comprinhas" className="h-24 w-auto" />
-      <Button onClick={signIn} text={`Entrar com Google`} />
-      
-    </div>
+      <LoginButton />
+    </main>
   )
 }

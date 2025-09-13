@@ -116,6 +116,16 @@ export default function Items({
     pingSummary()
   }
 
+  async function undo(i: Item) {
+    const { error } = await supabase
+      .from('items')
+      .update({ status: 'pending', bought_at: null })
+      .eq('id', i.id)
+    if (error) return alert(error.message)
+    await load()
+    pingSummary()
+  }
+
   // UI
   return (
     <section className="space-y-4">
@@ -151,6 +161,13 @@ export default function Items({
             {i.status === 'bought'
               ? <>
                   <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">comprado</span>
+                  <button
+                    className="ml-2 text-xs px-2 py-1 border rounded"
+                    onClick={() => undo(i)}
+                    title="Voltar para pendente"
+                  >
+                    Desfazer
+                  </button>
                   {i.bought_at && (
                     <span className="absolute right-2 bottom-1 text-[10px] text-gray-500">
                       {new Date(i.bought_at).toLocaleDateString('pt-BR')}

@@ -2,6 +2,8 @@ import { createClientServer } from '@/lib/supabase-server'
 import Link from 'next/link'
 import Items from './Items'
 import Summary from './Summary'
+import BudgetEditor from './BudgetEditor' // + ADD
+
 
 export default async function ListPage({ params }: { params: { id: string } }) {
   const { id } = await params; 
@@ -19,7 +21,13 @@ export default async function ListPage({ params }: { params: { id: string } }) {
     <main className="p-6 max-w-2xl mx-auto space-y-4">
       <Link href="/dashboard" className="underline">← Voltar</Link>
       <h1 className="text-xl font-semibold">{list.name}</h1>
-      <p>Orçamento: R$ {(list.monthly_budget_cents/100).toFixed(2)}</p>
+      <p className='flex justify-between'>
+        <span>Orçamento: R$ {(list.monthly_budget_cents/100).toFixed(2)}</span>
+        <BudgetEditor
+          listId={id}
+          initialBudgetCents={list.monthly_budget_cents}
+        />
+      </p>
       <Summary listId={id} budgetCents={list.monthly_budget_cents} />
       <h2>Itens</h2>
       <Items listId={id} budgetCents={list.monthly_budget_cents} /> 
