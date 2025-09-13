@@ -1,5 +1,6 @@
 import { createClientServer } from '@/lib/supabase-server'
 import Lists from './Lists'
+import OwnerEmailBackfill from '../components/OwnerEmailBackfill';
 
 export default async function Dashboard() {
   const supabase = await createClientServer(); // <- await aqui
@@ -20,6 +21,7 @@ export default async function Dashboard() {
       <form action="/auth/signout" method="post" className='flex mt-10 justify-end'>
         <button type="submit" className="px-3 py-2 rounded border">Sair</button>
       </form>
+      <OwnerEmailBackfill />
     </main>
   
   )

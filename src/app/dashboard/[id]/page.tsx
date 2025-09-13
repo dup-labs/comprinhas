@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Items from './Items'
 import Summary from './Summary'
 import BudgetEditor from './BudgetEditor' // + ADD
+import { ShareBox } from './ShareBox'
 
 
 export default async function ListPage({ params }: { params: { id: string } }) {
@@ -31,6 +32,14 @@ export default async function ListPage({ params }: { params: { id: string } }) {
       <Summary listId={id} budgetCents={list.monthly_budget_cents} />
       <h2>Itens</h2>
       <Items listId={id} budgetCents={list.monthly_budget_cents} /> 
+      <p className="text-sm text-gray-500">
+        Criado por{' '}
+        {list.owner_email
+          ? (user?.email === list.owner_email ? 'você' : list.owner_email)
+          : (user?.id === list.owner_id ? 'você' : 'desconhecido')}
+      </p>
+
+      <ShareBox listId={id} initialEmails={list.shared_emails ?? []} />
       {/* <div className="text-gray-600">Próximo: itens da lista.</div> */}
     </main>
   )

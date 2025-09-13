@@ -37,7 +37,10 @@ export default function Lists() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return alert('Faça login.')
     const { error } = await supabase.from('lists').insert({
-      owner_id: user.id, name: name.trim(), monthly_budget_cents: cents
+      owner_id: user.id, 
+      owner_email: user.email, 
+      name: name.trim(), 
+      monthly_budget_cents: cents
     })
     if (error) return alert(error.message)
     closeNewList()
