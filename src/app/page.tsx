@@ -1,10 +1,15 @@
 import { redirect } from 'next/navigation'
-import { createClientServer } from '@/lib/supabase-server'
+// import { createClientServer } from '@/lib/supabase-server'
 import LoginButton from './components/LoginButton' // botão client que chama o OAuth
+
+import { createClientServerRSC } from '@/lib/supabase-server'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default async function Home() {
   // cookies() agora é assíncrono dentro do helper → aguarde aqui
-  const supabase = await createClientServer()
+  const supabase = await createClientServerRSC()
   const { data: { user } } = await supabase.auth.getUser()
 
   // já logado? manda pro dashboard

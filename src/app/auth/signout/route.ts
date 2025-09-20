@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
-import { createClientServer } from '@/lib/supabase-server'
+import { createClientServerAction } from '@/lib/supabase-server'
 
-export async function POST(req: Request) {
-  const supabase = await createClientServer()
+export async function GET() {
+  const supabase = await createClientServerAction()
   await supabase.auth.signOut()
-  return NextResponse.redirect(new URL('/', req.url), { status: 302 })
+  return NextResponse.redirect(new URL('/', process.env.NEXT_PUBLIC_SITE_URL))
 }
 
-export async function GET(req: Request) {
-  const supabase = await createClientServer()
+export async function POST() {
+  const supabase = await createClientServerAction()
   await supabase.auth.signOut()
-  return NextResponse.redirect(new URL('/', req.url), { status: 302 })
+  return NextResponse.redirect(new URL('/', process.env.NEXT_PUBLIC_SITE_URL))
 }

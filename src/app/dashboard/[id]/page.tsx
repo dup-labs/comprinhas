@@ -1,15 +1,20 @@
-import { createClientServer } from '@/lib/supabase-server'
+// import { createClientServer } from '@/lib/supabase-server'
 import Link from 'next/link'
 import Items from './Items'
 import Summary from './Summary'
 import BudgetEditor from './BudgetEditor' // + ADD
 import { ShareBox } from './ShareBox'
 
+import { createClientServerRSC } from '@/lib/supabase-server'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 
 export default async function ListPage({ params }: { params: { id: string } }) {
   const { id } = await params; 
 
-  const supabase = await createClientServer()
+  const supabase = await createClientServerRSC()
   const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) return <main className="p-6">Sem login. <a href="/">Voltar</a></main>

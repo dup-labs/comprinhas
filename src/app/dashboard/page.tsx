@@ -1,9 +1,16 @@
-import { createClientServer } from '@/lib/supabase-server'
+// import { createClientServer } from '@/lib/supabase-server'
 import Lists from './Lists'
 import OwnerEmailBackfill from '../components/OwnerEmailBackfill';
 
+import { createClientServerRSC } from '@/lib/supabase-server'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+
+
 export default async function Dashboard() {
-  const supabase = await createClientServer(); // <- await aqui
+  const supabase = await createClientServerRSC(); // <- await aqui
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) return (
