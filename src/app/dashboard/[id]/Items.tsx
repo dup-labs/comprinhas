@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState, useMemo } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useEffect, useState, useMemo } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClientBrowser } from '@/lib/supabase-browser'
 import { useDisclosure } from '@/hooks/useDisclosure'
 import Modal from '@/app/components/Modal'
@@ -23,12 +23,13 @@ export default function Items({
   listId: string
   budgetCents: number
 }) {
+  const router = useRouter()
+  const sp = useSearchParams()
   const newItem = useDisclosure(false)
   const supabase = createClientBrowser()
   const [items, setItems] = useState<Item[]>([])
 
-  // --- filtro por mês via URL (?month=YYYY-MM) ---
-  const sp = useSearchParams()
+  // --- mês via URL (?month=YYYY-MM) ---
   function currentMonthYYYYMM() {
     const now = new Date()
     const yyyy = String(now.getUTCFullYear())
@@ -41,11 +42,10 @@ export default function Items({
   const monthStart = Date.UTC(y, m - 1, 1)
   const monthEnd = Date.UTC(m === 12 ? y + 1 : y, m % 12, 1)
 
-  // toggle: exibir pendentes junto
+  // toggle: exibir pendentes
   const showPending = sp.get('showPending') === 'true'
 
-  // modal "Adicionar item"
-  const newItemDialog = useRef<HTMLDialogElement>(null)
+  // form states
   const [title, setTitle] = useState('')
   const [price, setPrice] = useState('')
   const [url, setUrl] = useState('')
@@ -79,7 +79,7 @@ export default function Items({
   }
   useEffect(() => { load() }, [listId])
 
-  // ✅ Lista visível reage a showPending e ao mês (sem recarregar do banco)
+  // ✅ Lista visível (reage a showPending e mês)
   const visibleItems = useMemo(() => {
     return items.filter(i => {
       if (i.status === 'bought') return i.bought_at && sameMonth(i.bought_at)
@@ -87,7 +87,7 @@ export default function Items({
     })
   }, [items, showPending, monthStart, monthEnd])
 
-  // ✅ Totais calculados APENAS com o que está visível
+  // ✅ Totais a partir do que está visível
   const selectedCents = useMemo(
     () => visibleItems.filter(i => i.status === 'selected').reduce((s, i) => s + i.price_cents, 0),
     [visibleItems]
@@ -99,20 +99,30 @@ export default function Items({
   const availableThisMonth = budgetCents - boughtThisMonth
   const canFinalize = showPending && selectedCents > 0 && selectedCents <= availableThisMonth
 
-  // modal open/close
-  function openNewItem() {
-    if (!showPending) return // não permite abrir se pendentes não estão visíveis
-    setTitle(''); setPrice(''); setUrl('')
-    newItemDialog.current?.showModal()
+  // util: garantir showPending=true na URL
+  function ensureShowPendingOn() {
+    const params = new URLSearchParams(sp)
+    if (params.get('showPending') !== 'true') {
+      params.set('showPending', 'true')
+      router.replace(`?${params.toString()}`, { scroll: false })
+    }
   }
-  function closeNewItem() { newItemDialog.current?.close() }
+
+  // modal open/close (100% controlado)
+  function openNewItem() {
+    // se estiver oculto, liga e abre o modal
+    ensureShowPendingOn()
+    setTitle(''); setPrice(''); setUrl('')
+    newItem.openModal()
+  }
+  function closeNewItem() { newItem.closeModal() }
 
   // actions
   async function addItem(e: React.FormEvent) {
     e.preventDefault()
-    if (!showPending) return // segurança extra
     const cents = toCents(price)
     if (cents === null) return alert('Preço inválido.')
+
     const { error } = await supabase.from('items').insert({
       list_id: listId,
       title,
@@ -121,6 +131,9 @@ export default function Items({
       status: 'pending',
     })
     if (error) return alert(error.message)
+
+    // Após adicionar: garante exibição dos pendentes e recarrega
+    ensureShowPendingOn()
     closeNewItem()
     await load()
     pingSummary()
@@ -171,9 +184,8 @@ export default function Items({
       <div className="flex items-center justify-between gap-2">
         <button
           onClick={openNewItem}
-          disabled={!showPending}
-          className={`px-3 py-3 rounded-br-2xl rounded-bl-2xl w-full text-nowrap bg-white shadow-gray-200 shadow-md text-xs ${showPending ? '' : 'opacity-50 cursor-not-allowed'}`}
-          title={showPending ? 'Adicionar item' : 'Ative "Exibir pendentes" para adicionar'}
+          className={`px-3 py-3 rounded-br-2xl rounded-bl-2xl w-full text-nowrap bg-white shadow-gray-200 shadow-md text-xs cursor-pointer`}
+          title="Adicionar item"
         >
           Novo item
         </button>
@@ -189,70 +201,73 @@ export default function Items({
       </div>
 
       {/* totais rápidos (somente do que está visível) */}
-      {/* <div className="text-sm  text-gray-700 sticky top-0 bg-white pl-4 pr-4 pt-2 pb-2 z-2 w-[calc(100%+3rem)] -ml-6 text-[11px] shadow-gray-200 shadow-md">
+      {/* 
+      <div className="text-sm text-gray-700 sticky top-0 bg-white pl-4 pr-4 pt-2 pb-2 z-2 w-[calc(100%+3rem)] -ml-6 text-[11px] shadow-gray-200 shadow-md">
         Comprado no mês: <b>{fmt(boughtThisMonth)}</b> •{' '}
         Disponível: <b>{fmt(availableThisMonth)}</b> •{' '}
         Selecionado: <b>{fmt(selectedCents)}</b>
-      </div> */}
+      </div> 
+      */}
 
       {/* lista filtrada conforme mês e toggle showPending */}
       <ul className="space-y-2">
-        {visibleItems.map((i,idx) => (
-          <li key={i.id} className={`bg-white mb-4 flex flex-col items-center gap-3 p-4 rounded-4xl pl-4 pr-4  relative shadow-gray-200 shadow-md ${i.status === 'bought' ? `bg-green-100 border-1 border-green-700` : ``}`}>
-            <div className='flex w-full items-center gap-4'>
+        {visibleItems.map((i, idx) => (
+          <li
+            key={i.id}
+            className={`bg-white mb-4 flex flex-col items-center gap-3 p-4 rounded-4xl pl-4 pr-4 relative shadow-gray-200 shadow-md ${
+              i.status === 'bought' ? 'bg-green-100 border-1 border-green-700' : ''
+            }`}
+          >
+            <div className="flex w-full items-center gap-4">
               <input
-                className={`appearance-none w-4 h-4 border-2 border-brand-pink-fg rounded-full checked:bg-brand-pink-fg checked:border-brand-pink-fg cursor-pointer transition-all ${i.status === 'bought' ? `opacity-35 bg-green-100 border-green-700` : ``}`}
-                  type="checkbox"
-                  id={`check-field-${idx}`}
-                  disabled={i.status === 'bought'}
-                  checked={i.status === 'selected'}
-                  onChange={() => toggleSelected(i)}
-                  title={i.status === 'bought' ? 'Já comprado' : 'Selecionar para comprar'}
-                />
-              <label htmlFor={`check-field-${idx}`} className={`cursor-pointer line-clamp-2 leading-tight w-full flex-1 ${i.status === 'bought' ? 'opacity-35 line-through text-gray-500' : ''}`}>
+                className={`appearance-none w-4 h-4 border-2 border-brand-pink-fg rounded-full checked:bg-brand-pink-fg checked:border-brand-pink-fg cursor-pointer transition-all ${
+                  i.status === 'bought' ? 'opacity-35 bg-green-100 border-green-700' : ''
+                }`}
+                type="checkbox"
+                id={`check-field-${idx}`}
+                disabled={i.status === 'bought'}
+                checked={i.status === 'selected'}
+                onChange={() => toggleSelected(i)}
+                title={i.status === 'bought' ? 'Já comprado' : 'Selecionar para comprar'}
+              />
+              <label
+                htmlFor={`check-field-${idx}`}
+                className={`cursor-pointer line-clamp-2 leading-tight w-full flex-1 ${
+                  i.status === 'bought' ? 'opacity-35 line-through text-gray-500' : ''
+                }`}
+              >
                 {i.title || '(sem título)'}
               </label>
               <span className={`${i.status === 'bought' ? 'opacity-35' : ''}`}>{fmt(i.price_cents)}</span>
-              {i.url && 
-                // <a className="underline" href={i.url} target="_blank" rel="noreferrer">ver</a>
-                <ActionButton text="Ver" type="see" href={i.url} newTab />
-              }
+              {i.url && <ActionButton text="Ver" type="see" href={i.url} newTab />}
             </div>
+
             <div className="flex justify-end gap-5 w-full items-center">
-              {i.status === 'bought'
-                ? <>
-                    <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">
-                      comprado
-                    </span>
-                    {/* <button
-                      className="ml-2 text-xs px-2 py-1 rounded border"
-                      onClick={() => undo(i)}
-                      title="Desfazer compra"
-                    >
-                      desfazer
-                    </button> */}
-                    <ActionButton
-                      text={`Desfazer compra`}
-                      onClick={() => undo(i)}
-                      type={`undo`}
-                      className={`bg-gray-100`}
-                    />
-                  </>
-                // : <button className="text-sm px-2 py-1 border rounded" onClick={() => del(i.id)}>Excluir</button>
-              : <ActionButton
-                  text={`Remover`}
+              {i.status === 'bought' ? (
+                <>
+                  <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">comprado</span>
+                  <ActionButton
+                    text="Desfazer compra"
+                    onClick={() => undo(i)}
+                    type="undo"
+                    className="bg-gray-100"
+                  />
+                </>
+              ) : (
+                <ActionButton
+                  text="Remover"
                   onClick={() => del(i.id)}
-                  type={`remove`}
-                  className={`bg-red-100`}
+                  type="remove"
+                  className="bg-red-100"
                 />
-              }
+              )}
             </div>
           </li>
         ))}
         {visibleItems.length === 0 && <li className="text-gray-600">Nada para exibir.</li>}
       </ul>
 
-      {/* modal: novo item (bloqueado quando showPending=false) */}
+      {/* modal: novo item (controlado pelo disclosure) */}
       <Modal open={newItem.open} onClose={newItem.closeModal} title="Adicionar item">
         <form onSubmit={addItem} className="space-y-3" key={newItem.open ? 'open' : 'closed'}>
           <input
@@ -260,9 +275,8 @@ export default function Items({
             className="w-full border rounded p-2"
             placeholder="Item"
             value={title}
-            onChange={e=>setTitle(e.target.value)}
+            onChange={(e) => setTitle(e.target.value)}
             required
-            disabled={!showPending}
           />
           <div className="flex gap-2">
             <input
@@ -270,21 +284,21 @@ export default function Items({
               placeholder="Preço (ex: 49,90)"
               inputMode="decimal"
               value={price}
-              onChange={e=>setPrice(e.target.value)}
+              onChange={(e) => setPrice(e.target.value)}
               required
-              disabled={!showPending}
             />
             <input
               className="flex-1 border rounded p-2"
               placeholder="Link (opcional)"
               value={url}
-              onChange={e=>setUrl(e.target.value)}
-              disabled={!showPending}
+              onChange={(e) => setUrl(e.target.value)}
             />
           </div>
           <div className="flex items-center justify-end gap-2 pt-2">
-            <button type="button" onClick={newItem.closeModal} className="px-3 py-2 rounded border">Cancelar</button>
-            <button type="submit" className="px-3 py-2 rounded bg-black text-white" disabled={!showPending}>
+            <button type="button" onClick={closeNewItem} className="px-3 py-2 rounded border">
+              Cancelar
+            </button>
+            <button type="submit" className="px-3 py-2 rounded bg-black text-white">
               Adicionar
             </button>
           </div>

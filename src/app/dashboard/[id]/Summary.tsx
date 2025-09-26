@@ -159,7 +159,8 @@ export default function Summary({ listId, budgetCents }: { listId: string; budge
           <input
             id="showPending"
             type="checkbox"
-            defaultChecked={sp.get('showPending') === 'true'}
+            // 🔁 CONTROLADO: reflete a URL sempre
+            checked={showPending}
             onChange={(e) => {
               const params = new URLSearchParams(sp)
               if (e.target.checked) params.set('showPending', 'true')
@@ -175,9 +176,8 @@ export default function Summary({ listId, budgetCents }: { listId: string; budge
       <div className="font-semibold">Resumo do mês</div>
       <div>Orçamento: <b>{fmt(budgetCents)}</b></div>
       <div>
-        {/* Selecionados {showPending ? '' : '(ocultos)'}: <b>{fmt(selectedVisibleCents)}</b> */}
         {showPending && <div>Selecionados: <b>{fmt(selectedVisibleCents)}</b></div>}
-        </div>
+      </div>
       <div>Comprado no mês: <b>{fmt(boughtMonthCents)}</b></div>
       <div className={remainingCents < 0 ? 'text-red-600 font-semibold' : ''}>
         Restante: <b>{fmt(remainingCents)}</b>
@@ -187,7 +187,15 @@ export default function Summary({ listId, budgetCents }: { listId: string; budge
       {/*
         Sugestão opcional (não aplicada):
         Para deixar "Exibir pendentes" marcado por padrão, use:
-        defaultChecked={sp.get('showPending') !== 'false'}
+        se a URL não tiver a chave, ligar por padrão.
+        Ex.: se quiser forçar, em um useEffect:
+        useEffect(() => {
+          const params = new URLSearchParams(sp)
+          if (!params.has('showPending')) {
+            params.set('showPending', 'true')
+            router.replace(`?${params.toString()}`, { scroll: false })
+          }
+        }, [])
       */}
     </div>
   )
