@@ -3,8 +3,8 @@ import 'server-only'
 import { cookies } from 'next/headers'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
-export function createSupabaseRSC() {
-  const cookieStore = cookies() // sem await
+export async function createSupabaseRSC() {
+  const cookieStore = await cookies() // Next 15: precisa de await
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,12 +12,9 @@ export function createSupabaseRSC() {
     {
       cookies: {
         get(name: string) {
-          // normaliza o retorno para string | undefined
-          const anyStore = cookieStore as any
-          const c = typeof anyStore.get === 'function' ? anyStore.get(name) : undefined
-          return typeof c === 'string' ? c : c?.value
+          return cookieStore.get(name)?.value
         },
-        // em RSC não pode escrever cookies
+        // Em RSC não escrevemos cookies (no-ops):
         set(_name: string, _value: string, _options: CookieOptions) {},
         remove(_name: string, _options: CookieOptions) {},
       },
