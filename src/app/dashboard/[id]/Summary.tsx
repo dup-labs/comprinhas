@@ -143,7 +143,7 @@ export default function Summary({ listId, budgetCents }: { listId: string; budge
   const over = showPending && selectedVisibleCents > (budgetCents - boughtMonthCents)
 
   return (
-    <div className="rounded p-4 bg-purple-100 text-purple-950 space-y-2">
+    <div className="rounded p-4 bg-purple-100 text-purple-950 mb-0">
       {/* Controles: mês (PT-BR) + checkbox Exibir pendentes */}
       <div className="flex items-center gap-4">
         <MonthPickerBR

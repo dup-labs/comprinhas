@@ -168,81 +168,85 @@ export default function Items({
   return (
     <section className="space-y-4">
       {/* ações */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
         <button
           onClick={openNewItem}
           disabled={!showPending}
-          className={`px-3 py-2 rounded border ${showPending ? '' : 'opacity-50 cursor-not-allowed'}`}
+          className={`px-3 py-3 rounded-br-2xl rounded-bl-2xl w-full text-nowrap bg-white shadow-gray-200 shadow-md text-xs ${showPending ? '' : 'opacity-50 cursor-not-allowed'}`}
           title={showPending ? 'Adicionar item' : 'Ative "Exibir pendentes" para adicionar'}
         >
-          Adicionar item
+          Novo item
         </button>
 
         <button
           onClick={finalize}
           disabled={!canFinalize}
-          className={`px-3 py-2 rounded text-white ${canFinalize ? 'bg-green-600' : 'bg-gray-400 cursor-not-allowed'}`}
+          className={`px-3 py-3 rounded-br-2xl rounded-bl-2xl w-full text-nowrap text-gray-400 shadow-gray-200 shadow-md text-xs ${canFinalize ? 'bg-green-600 text-white' : 'bg-gray-200 cursor-not-allowed'}`}
           title={canFinalize ? 'Finalizar compra' : 'Selecione itens e/ou ative "Exibir pendentes"'}
         >
-          Marcar selecionados como comprados
+          Comprar selecionados
         </button>
       </div>
 
       {/* totais rápidos (somente do que está visível) */}
-      <div className="text-sm text-gray-700">
+      {/* <div className="text-sm  text-gray-700 sticky top-0 bg-white pl-4 pr-4 pt-2 pb-2 z-2 w-[calc(100%+3rem)] -ml-6 text-[11px] shadow-gray-200 shadow-md">
         Comprado no mês: <b>{fmt(boughtThisMonth)}</b> •{' '}
         Disponível: <b>{fmt(availableThisMonth)}</b> •{' '}
         Selecionado: <b>{fmt(selectedCents)}</b>
-      </div>
+      </div> */}
 
       {/* lista filtrada conforme mês e toggle showPending */}
       <ul className="space-y-2">
         {visibleItems.map((i,idx) => (
-          <li key={i.id} className={`bg-white mb-4 flex items-center gap-3 p-4 rounded-4xl pl-4 pr-4  relative shadow-gray-200 shadow-md ${i.status === 'bought' ? `bg-green-100 border-1 border-green-700` : ``}`}>
-            <input
-              className={`appearance-none w-4 h-4 border-2 border-brand-pink-fg rounded-full checked:bg-brand-pink-fg checked:border-brand-pink-fg cursor-pointer transition-all ${i.status === 'bought' ? `opacity-35 bg-green-100 border-green-700` : ``}`}
-                type="checkbox"
-                id={`check-field-${idx}`}
-                disabled={i.status === 'bought'}
-                checked={i.status === 'selected'}
-                onChange={() => toggleSelected(i)}
-                title={i.status === 'bought' ? 'Já comprado' : 'Selecionar para comprar'}
-              />
-            <label htmlFor={`check-field-${idx}`} className={`cursor-pointer flex-1 ${i.status === 'bought' ? 'opacity-35 line-through text-gray-500' : ''}`}>
-              {i.title || '(sem título)'}
-            </label>
-            <span className={`${i.status === 'bought' ? 'opacity-35' : ''}`}>{fmt(i.price_cents)}</span>
-            {i.url && 
-              // <a className="underline" href={i.url} target="_blank" rel="noreferrer">ver</a>
-              <ActionButton text="Ver" type="see" href={i.url} newTab />
-            }
-            {i.status === 'bought'
-              ? <>
-                  <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">
-                    comprado
-                  </span>
-                  {/* <button
-                    className="ml-2 text-xs px-2 py-1 rounded border"
-                    onClick={() => undo(i)}
-                    title="Desfazer compra"
-                  >
-                    desfazer
-                  </button> */}
-                  <ActionButton
-                    text={`Desfazer compra`}
-                    onClick={() => undo(i)}
-                    type={`undo`}
-                    className={`bg-gray-100`}
-                  />
-                </>
-              // : <button className="text-sm px-2 py-1 border rounded" onClick={() => del(i.id)}>Excluir</button>
-             : <ActionButton
-                text={`Remover`}
-                onClick={() => del(i.id)}
-                type={`remove`}
-                className={`bg-red-100`}
-              />
-            }
+          <li key={i.id} className={`bg-white mb-4 flex flex-col items-center gap-3 p-4 rounded-4xl pl-4 pr-4  relative shadow-gray-200 shadow-md ${i.status === 'bought' ? `bg-green-100 border-1 border-green-700` : ``}`}>
+            <div className='flex w-full items-center gap-4'>
+              <input
+                className={`appearance-none w-4 h-4 border-2 border-brand-pink-fg rounded-full checked:bg-brand-pink-fg checked:border-brand-pink-fg cursor-pointer transition-all ${i.status === 'bought' ? `opacity-35 bg-green-100 border-green-700` : ``}`}
+                  type="checkbox"
+                  id={`check-field-${idx}`}
+                  disabled={i.status === 'bought'}
+                  checked={i.status === 'selected'}
+                  onChange={() => toggleSelected(i)}
+                  title={i.status === 'bought' ? 'Já comprado' : 'Selecionar para comprar'}
+                />
+              <label htmlFor={`check-field-${idx}`} className={`cursor-pointer line-clamp-2 leading-tight w-full flex-1 ${i.status === 'bought' ? 'opacity-35 line-through text-gray-500' : ''}`}>
+                {i.title || '(sem título)'}
+              </label>
+              <span className={`${i.status === 'bought' ? 'opacity-35' : ''}`}>{fmt(i.price_cents)}</span>
+              {i.url && 
+                // <a className="underline" href={i.url} target="_blank" rel="noreferrer">ver</a>
+                <ActionButton text="Ver" type="see" href={i.url} newTab />
+              }
+            </div>
+            <div className="flex justify-end gap-5 w-full items-center">
+              {i.status === 'bought'
+                ? <>
+                    <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">
+                      comprado
+                    </span>
+                    {/* <button
+                      className="ml-2 text-xs px-2 py-1 rounded border"
+                      onClick={() => undo(i)}
+                      title="Desfazer compra"
+                    >
+                      desfazer
+                    </button> */}
+                    <ActionButton
+                      text={`Desfazer compra`}
+                      onClick={() => undo(i)}
+                      type={`undo`}
+                      className={`bg-gray-100`}
+                    />
+                  </>
+                // : <button className="text-sm px-2 py-1 border rounded" onClick={() => del(i.id)}>Excluir</button>
+              : <ActionButton
+                  text={`Remover`}
+                  onClick={() => del(i.id)}
+                  type={`remove`}
+                  className={`bg-red-100`}
+                />
+              }
+            </div>
           </li>
         ))}
         {visibleItems.length === 0 && <li className="text-gray-600">Nada para exibir.</li>}

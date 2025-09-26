@@ -65,16 +65,11 @@ export default function Lists() {
 
   return (
     <section className="space-y-6">
-      {/* header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-medium">Minhas listas</h1>
-        <button onClick={newList.openModal} className="px-3 py-2 rounded bg-black text-white">
-          Nova lista
-        </button>
-      </div>
-
       {/* listagem */}
       <ul className="flex flex-wrap w-full gap-4 mt-16 p-0 md:p-16">
+        <button onClick={newList.openModal} className={`flex justify-center min-h-30 gap-3 p-5 pt-6 pb-14 -mt-10 md:-mt-0 bg-white rounded-4xl w-full max-w-full md:max-w-48  md:min-w-92 shadow-[0_-10px_20px_-10px_rgb(0_0_0/.25)]`}>
+          Nova lista
+        </button>
         {lists.map((l,i) => (
           <ListItem
             listLength={lists.length}
