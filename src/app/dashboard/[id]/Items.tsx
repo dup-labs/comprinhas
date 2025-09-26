@@ -1,8 +1,11 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+
+import { useEffect, useRef, useState, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClientBrowser } from '@/lib/supabase-browser'
 import { useDisclosure } from '@/hooks/useDisclosure'
 import Modal from '@/app/components/Modal'
+import ActionButton from '@/app/components/ActionButton'
 
 type Item = {
   id: string
@@ -24,6 +27,23 @@ export default function Items({
   const supabase = createClientBrowser()
   const [items, setItems] = useState<Item[]>([])
 
+  // --- filtro por mês via URL (?month=YYYY-MM) ---
+  const sp = useSearchParams()
+  function currentMonthYYYYMM() {
+    const now = new Date()
+    const yyyy = String(now.getUTCFullYear())
+    const mm = String(now.getUTCMonth() + 1).padStart(2, '0')
+    return `${yyyy}-${mm}`
+  }
+  const monthParam = sp.get('month') ?? currentMonthYYYYMM()
+  const y = parseInt(monthParam.slice(0, 4), 10)
+  const m = parseInt(monthParam.slice(5, 7), 10) // 1-12
+  const monthStart = Date.UTC(y, m - 1, 1)
+  const monthEnd = Date.UTC(m === 12 ? y + 1 : y, m % 12, 1)
+
+  // toggle: exibir pendentes junto
+  const showPending = sp.get('showPending') === 'true'
+
   // modal "Adicionar item"
   const newItemDialog = useRef<HTMLDialogElement>(null)
   const [title, setTitle] = useState('')
@@ -33,8 +53,9 @@ export default function Items({
   // helpers
   const fmt = (cents?: number) => `R$ ${((Number(cents ?? 0)) / 100).toFixed(2)}`
   const sameMonth = (dateStr: string) => {
-    const d = new Date(dateStr); const now = new Date()
-    return d.getUTCFullYear() === now.getUTCFullYear() && d.getUTCMonth() === now.getUTCMonth()
+    if (!dateStr) return false
+    const t = new Date(dateStr).getTime()
+    return t >= monthStart && t < monthEnd
   }
   const toCents = (input: string): number | null => {
     if (!input) return null
@@ -50,24 +71,37 @@ export default function Items({
   async function load() {
     const { data, error } = await supabase
       .from('items')
-      .select('id,title,url,price_cents,status,bought_at')
+      .select('id,title,url,price_cents,status,bought_at,created_at')
       .eq('list_id', listId)
-      .order('status', { ascending: true })
+      // Mantém ordem por criação para não "pular" ao mudar status
       .order('created_at', { ascending: false })
     if (!error) setItems((data ?? []) as Item[])
   }
   useEffect(() => { load() }, [listId])
 
-  // derived (para bloquear botão)
-  const selectedCents = items.filter(i => i.status === 'selected').reduce((s, i) => s + i.price_cents, 0)
-  const boughtThisMonth = items
-    .filter(i => i.status === 'bought' && i.bought_at && sameMonth(i.bought_at))
-    .reduce((s, i) => s + i.price_cents, 0)
+  // ✅ Lista visível reage a showPending e ao mês (sem recarregar do banco)
+  const visibleItems = useMemo(() => {
+    return items.filter(i => {
+      if (i.status === 'bought') return i.bought_at && sameMonth(i.bought_at)
+      return showPending
+    })
+  }, [items, showPending, monthStart, monthEnd])
+
+  // ✅ Totais calculados APENAS com o que está visível
+  const selectedCents = useMemo(
+    () => visibleItems.filter(i => i.status === 'selected').reduce((s, i) => s + i.price_cents, 0),
+    [visibleItems]
+  )
+  const boughtThisMonth = useMemo(
+    () => visibleItems.filter(i => i.status === 'bought').reduce((s, i) => s + i.price_cents, 0),
+    [visibleItems]
+  )
   const availableThisMonth = budgetCents - boughtThisMonth
-  const canFinalize = selectedCents > 0 && selectedCents <= availableThisMonth
+  const canFinalize = showPending && selectedCents > 0 && selectedCents <= availableThisMonth
 
   // modal open/close
   function openNewItem() {
+    if (!showPending) return // não permite abrir se pendentes não estão visíveis
     setTitle(''); setPrice(''); setUrl('')
     newItemDialog.current?.showModal()
   }
@@ -76,32 +110,29 @@ export default function Items({
   // actions
   async function addItem(e: React.FormEvent) {
     e.preventDefault()
-    const t = title.trim()
-    if (!t) return alert('Coloque um nome pro item.')
+    if (!showPending) return // segurança extra
     const cents = toCents(price)
     if (cents === null) return alert('Preço inválido.')
-
     const { error } = await supabase.from('items').insert({
-      list_id: listId, title: t, url: url.trim() || null, price_cents: cents
+      list_id: listId,
+      title,
+      url: url || null,
+      price_cents: cents,
+      status: 'pending',
     })
     if (error) return alert(error.message)
-
     closeNewItem()
     await load()
     pingSummary()
-  }
-
-  async function del(id: string) {
-    if (!confirm('Excluir item?')) return
-    const { error } = await supabase.from('items').delete().eq('id', id)
-    if (!error) { await load(); pingSummary() }
   }
 
   async function toggleSelected(i: Item) {
     if (i.status === 'bought') return
     const next = i.status === 'selected' ? 'pending' : 'selected'
     const { error } = await supabase.from('items').update({ status: next }).eq('id', i.id)
-    if (!error) { await load(); pingSummary() }
+    if (error) return alert(error.message)
+    await load()
+    pingSummary()
   }
 
   async function finalize() {
@@ -126,62 +157,98 @@ export default function Items({
     pingSummary()
   }
 
-  // UI
+  async function del(id: string) {
+    if (!confirm('Excluir item?')) return
+    const { error } = await supabase.from('items').delete().eq('id', id)
+    if (error) return alert(error.message)
+    await load()
+    pingSummary()
+  }
+
   return (
     <section className="space-y-4">
       {/* ações */}
       <div className="flex items-center gap-2">
-        <button onClick={newItem.openModal} className="px-3 py-2 rounded border">Adicionar item</button>
+        <button
+          onClick={openNewItem}
+          disabled={!showPending}
+          className={`px-3 py-2 rounded border ${showPending ? '' : 'opacity-50 cursor-not-allowed'}`}
+          title={showPending ? 'Adicionar item' : 'Ative "Exibir pendentes" para adicionar'}
+        >
+          Adicionar item
+        </button>
+
         <button
           onClick={finalize}
           disabled={!canFinalize}
           className={`px-3 py-2 rounded text-white ${canFinalize ? 'bg-green-600' : 'bg-gray-400 cursor-not-allowed'}`}
-          title={canFinalize ? 'Finalizar compra' : 'Seleção acima do disponível do mês'}
+          title={canFinalize ? 'Finalizar compra' : 'Selecione itens e/ou ative "Exibir pendentes"'}
         >
           Marcar selecionados como comprados
         </button>
       </div>
 
-      {/* lista */}
+      {/* totais rápidos (somente do que está visível) */}
+      <div className="text-sm text-gray-700">
+        Comprado no mês: <b>{fmt(boughtThisMonth)}</b> •{' '}
+        Disponível: <b>{fmt(availableThisMonth)}</b> •{' '}
+        Selecionado: <b>{fmt(selectedCents)}</b>
+      </div>
+
+      {/* lista filtrada conforme mês e toggle showPending */}
       <ul className="space-y-2">
-        {items.map(i => (
-          <li key={i.id} className="flex items-center gap-3 p-2 border rounded relative">
+        {visibleItems.map((i,idx) => (
+          <li key={i.id} className={`bg-white mb-4 flex items-center gap-3 p-4 rounded-4xl pl-4 pr-4  relative shadow-gray-200 shadow-md ${i.status === 'bought' ? `bg-green-100 border-1 border-green-700` : ``}`}>
             <input
-              type="checkbox"
-              disabled={i.status === 'bought'}
-              checked={i.status === 'selected'}
-              onChange={() => toggleSelected(i)}
-              title={i.status === 'bought' ? 'Já comprado' : 'Selecionar para comprar'}
-            />
-            <span className={`flex-1 ${i.status === 'bought' ? 'line-through text-gray-500' : ''}`}>
+              className={`appearance-none w-4 h-4 border-2 border-brand-pink-fg rounded-full checked:bg-brand-pink-fg checked:border-brand-pink-fg cursor-pointer transition-all ${i.status === 'bought' ? `opacity-35 bg-green-100 border-green-700` : ``}`}
+                type="checkbox"
+                id={`check-field-${idx}`}
+                disabled={i.status === 'bought'}
+                checked={i.status === 'selected'}
+                onChange={() => toggleSelected(i)}
+                title={i.status === 'bought' ? 'Já comprado' : 'Selecionar para comprar'}
+              />
+            <label htmlFor={`check-field-${idx}`} className={`cursor-pointer flex-1 ${i.status === 'bought' ? 'opacity-35 line-through text-gray-500' : ''}`}>
               {i.title || '(sem título)'}
-            </span>
-            <span>{fmt(i.price_cents)}</span>
-            {i.url && <a className="underline" href={i.url} target="_blank" rel="noreferrer">ver</a>}
+            </label>
+            <span className={`${i.status === 'bought' ? 'opacity-35' : ''}`}>{fmt(i.price_cents)}</span>
+            {i.url && 
+              // <a className="underline" href={i.url} target="_blank" rel="noreferrer">ver</a>
+              <ActionButton text="Ver" type="see" href={i.url} newTab />
+            }
             {i.status === 'bought'
               ? <>
-                  <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">comprado</span>
-                  <button
-                    className="ml-2 text-xs px-2 py-1 border rounded"
+                  <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">
+                    comprado
+                  </span>
+                  {/* <button
+                    className="ml-2 text-xs px-2 py-1 rounded border"
                     onClick={() => undo(i)}
-                    title="Voltar para pendente"
+                    title="Desfazer compra"
                   >
-                    Desfazer
-                  </button>
-                  {i.bought_at && (
-                    <span className="absolute right-2 bottom-1 text-[10px] text-gray-500">
-                      {new Date(i.bought_at).toLocaleDateString('pt-BR')}
-                    </span>
-                  )}
+                    desfazer
+                  </button> */}
+                  <ActionButton
+                    text={`Desfazer compra`}
+                    onClick={() => undo(i)}
+                    type={`undo`}
+                    className={`bg-gray-100`}
+                  />
                 </>
-              : <button className="text-sm px-2 py-1 border rounded" onClick={() => del(i.id)}>Excluir</button>
+              // : <button className="text-sm px-2 py-1 border rounded" onClick={() => del(i.id)}>Excluir</button>
+             : <ActionButton
+                text={`Remover`}
+                onClick={() => del(i.id)}
+                type={`remove`}
+                className={`bg-red-100`}
+              />
             }
           </li>
         ))}
-        {items.length === 0 && <li className="text-gray-600">Sem itens ainda.</li>}
+        {visibleItems.length === 0 && <li className="text-gray-600">Nada para exibir.</li>}
       </ul>
 
-      {/* modal: novo item (sem form aninhado) */}
+      {/* modal: novo item (bloqueado quando showPending=false) */}
       <Modal open={newItem.open} onClose={newItem.closeModal} title="Adicionar item">
         <form onSubmit={addItem} className="space-y-3" key={newItem.open ? 'open' : 'closed'}>
           <input
@@ -191,6 +258,7 @@ export default function Items({
             value={title}
             onChange={e=>setTitle(e.target.value)}
             required
+            disabled={!showPending}
           />
           <div className="flex gap-2">
             <input
@@ -200,17 +268,21 @@ export default function Items({
               value={price}
               onChange={e=>setPrice(e.target.value)}
               required
+              disabled={!showPending}
             />
             <input
               className="flex-1 border rounded p-2"
               placeholder="Link (opcional)"
               value={url}
               onChange={e=>setUrl(e.target.value)}
+              disabled={!showPending}
             />
           </div>
           <div className="flex items-center justify-end gap-2 pt-2">
             <button type="button" onClick={newItem.closeModal} className="px-3 py-2 rounded border">Cancelar</button>
-            <button type="submit" className="px-3 py-2 rounded bg-black text-white">Adicionar</button>
+            <button type="submit" className="px-3 py-2 rounded bg-black text-white" disabled={!showPending}>
+              Adicionar
+            </button>
           </div>
         </form>
       </Modal>
