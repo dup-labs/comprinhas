@@ -3,9 +3,13 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { createClientBrowser } from '@/lib/supabase-browser'
 
-type Row = { price_cents: number; status: 'pending'|'selected'|'bought'; bought_at: string|null }
+type Row = {
+  price_cents: number
+  status: 'pending' | 'selected' | 'bought'
+  bought_at: string | null
+  installments: number | null
+}
 
-/** Picker controlado (PT-BR) mantendo ?month=YYYY-MM */
 function MonthPickerBR({
   valueYYYYMM,
   onChange,
@@ -88,23 +92,12 @@ export default function Summary({ listId, budgetCents }: { listId: string; budge
   }
 
   const month = sp.get('month') ?? currentMonthYYYYMM()
-  const showPending = sp.get('showPending') === 'true' // <- controla visibilidade de pendentes/selecionados
-
-  const y = parseInt(month.slice(0,4), 10)
-  const m = parseInt(month.slice(5,7), 10)
-  const monthStart = Date.UTC(y, m-1, 1)
-  const monthEnd = Date.UTC(m === 12 ? y+1 : y, m % 12, 1)
-
-  function inSelectedMonth(iso: string | null) {
-    if (!iso) return false
-    const t = new Date(iso).getTime()
-    return t >= monthStart && t < monthEnd
-  }
+  const showPending = sp.get('showPending') === 'true'
 
   async function load() {
     const { data, error } = await supabase
       .from('items')
-      .select('price_cents,status,bought_at')
+      .select('price_cents,status,bought_at,installments')
       .eq('list_id', listId)
 
     if (error) {
@@ -121,30 +114,84 @@ export default function Summary({ listId, budgetCents }: { listId: string; budge
     window.addEventListener('items-changed', handler)
     return () => window.removeEventListener('items-changed', handler)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listId, month])
+  }, [listId])
 
-  // ✅ Totais baseados SOMENTE no que está visível:
-  // - Comprados: sempre os comprados dentro do mês
-  // - Selecionados: só contam quando showPending=true (visíveis)
-  const { selectedVisibleCents, boughtMonthCents, remainingCents } = useMemo(() => {
-    const bought = rows
-      .filter(r => r.status === 'bought' && inSelectedMonth(r.bought_at))
-      .reduce((s, r) => s + (r.price_cents || 0), 0)
+  // ✅ Cálculo principal
+  const {
+    selectedVisibleCents,
+    boughtMonthCents,
+    installmentsMonthCents,
+    totalMonthCents,
+    remainingCents,
+  } = useMemo(() => {
+    if (!rows.length) {
+      return {
+        selectedVisibleCents: 0,
+        boughtMonthCents: 0,
+        installmentsMonthCents: 0,
+        totalMonthCents: 0,
+        remainingCents: budgetCents,
+      }
+    }
+
+    const y = parseInt(month.slice(0, 4), 10)
+    const m = parseInt(month.slice(5, 7), 10)
+    const monthStart = Date.UTC(y, m - 1, 1)
+    const monthEnd = Date.UTC(m === 12 ? y + 1 : y, m % 12, 1)
+
+    function inSelectedMonth(iso: string | null) {
+      if (!iso) return false
+      const t = new Date(iso).getTime()
+      return t >= monthStart && t < monthEnd
+    }
+
+    let boughtMonth = 0
+    let installmentsMonth = 0
+
+    rows.forEach((r) => {
+      if (r.status !== 'bought' || !r.bought_at) return
+      const bought = new Date(r.bought_at)
+      const installments = r.installments || 1
+      const perMonth = r.price_cents / installments
+
+      for (let i = 0; i < installments; i++) {
+        const parcel = new Date(bought)
+        parcel.setUTCMonth(bought.getUTCMonth() + i)
+
+        const parcelTime = parcel.getTime()
+        if (parcelTime >= monthStart && parcelTime < monthEnd) {
+          if (i === 0 && inSelectedMonth(r.bought_at)) boughtMonth += perMonth
+          else installmentsMonth += perMonth
+        }
+      }
+    })
 
     const selectedVisible = showPending
-      ? rows.filter(r => r.status === 'selected').reduce((s, r) => s + (r.price_cents || 0), 0)
+      ? rows.filter((r) => r.status === 'selected').reduce((s, r) => s + (r.price_cents || 0), 0)
       : 0
 
-    const remaining = budgetCents - bought - selectedVisible
-    return { selectedVisibleCents: selectedVisible, boughtMonthCents: bought, remainingCents: remaining }
-  }, [rows, budgetCents, monthStart, monthEnd, showPending])
+    const totalMonth = boughtMonth + installmentsMonth
+    const remaining = budgetCents - totalMonth - selectedVisible
 
-  const fmt = (c: number) => `R$ ${(c/100).toFixed(2)}`
-  const over = showPending && selectedVisibleCents > (budgetCents - boughtMonthCents)
+    return {
+      selectedVisibleCents: selectedVisible,
+      boughtMonthCents: boughtMonth,
+      installmentsMonthCents: installmentsMonth,
+      totalMonthCents: totalMonth,
+      remainingCents: remaining,
+    }
+  }, [rows, budgetCents, month, showPending])
+
+  const fmt = (c: number) => `R$ ${(c / 100).toFixed(2)}`
+  const getPct = (v: number) =>
+    budgetCents > 0 ? `${((v / budgetCents) * 100).toFixed(1)}%` : '0%'
+
+  const over =
+    showPending && selectedVisibleCents > budgetCents - totalMonthCents
 
   return (
     <div className="rounded p-4 bg-purple-100 text-purple-950 mb-0">
-      {/* Controles: mês (PT-BR) + checkbox Exibir pendentes */}
+      {/* Controles */}
       <div className="flex items-center gap-4">
         <MonthPickerBR
           valueYYYYMM={month}
@@ -159,7 +206,6 @@ export default function Summary({ listId, budgetCents }: { listId: string; budge
           <input
             id="showPending"
             type="checkbox"
-            // 🔁 CONTROLADO: reflete a URL sempre
             checked={showPending}
             onChange={(e) => {
               const params = new URLSearchParams(sp)
@@ -169,34 +215,28 @@ export default function Summary({ listId, budgetCents }: { listId: string; budge
             }}
             className="w-4 h-4"
           />
-          <label htmlFor="showPending" className="text-sm">Exibir pendentes</label>
+          <label htmlFor="showPending" className="text-sm">
+            Exibir pendentes
+          </label>
         </div>
       </div>
 
-      <div className="font-semibold">Resumo do mês</div>
-      <div>Orçamento: <b>{fmt(budgetCents)}</b></div>
-      <div>
-        {showPending && <div>Selecionados: <b>{fmt(selectedVisibleCents)}</b></div>}
+      {/* Resumo */}
+      <div className="mt-3 font-semibold text-base">Resumo do mês</div>
+      <div>💰 Orçamento: <b>{fmt(budgetCents)}</b></div>
+      <div>🧾 Gastos parcelados: <b>{fmt(installmentsMonthCents)}</b> ({getPct(installmentsMonthCents)})</div>
+      <div>🛒 Compras feitas no mês: <b>{fmt(boughtMonthCents)}</b> ({getPct(boughtMonthCents)})</div>
+      <div>📊 Total de gastos do mês: <b>{fmt(totalMonthCents)}</b> ({getPct(totalMonthCents)})</div>
+      <div className={remainingCents < 0 ? 'text-red-600 font-semibold' : 'text-green-700 font-semibold'}>
+        ✅ Saldo disponível: <b>{fmt(remainingCents)}</b> ({getPct(remainingCents)})
       </div>
-      <div>Comprado no mês: <b>{fmt(boughtMonthCents)}</b></div>
-      <div className={remainingCents < 0 ? 'text-red-600 font-semibold' : ''}>
-        Restante: <b>{fmt(remainingCents)}</b>
-      </div>
-      {over && <div className="text-red-600 text-sm">Seleção acima do disponível do mês.</div>}
 
-      {/*
-        Sugestão opcional (não aplicada):
-        Para deixar "Exibir pendentes" marcado por padrão, use:
-        se a URL não tiver a chave, ligar por padrão.
-        Ex.: se quiser forçar, em um useEffect:
-        useEffect(() => {
-          const params = new URLSearchParams(sp)
-          if (!params.has('showPending')) {
-            params.set('showPending', 'true')
-            router.replace(`?${params.toString()}`, { scroll: false })
-          }
-        }, [])
-      */}
+      {showPending && (
+        <div>
+          🧩 Selecionados: <b>{fmt(selectedVisibleCents)}</b> ({getPct(selectedVisibleCents)})
+        </div>
+      )}
+      {over && <div className="text-red-600 text-sm">Seleção acima do disponível do mês.</div>}
     </div>
   )
 }
