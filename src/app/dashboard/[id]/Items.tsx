@@ -14,10 +14,8 @@ type Item = {
   status: 'pending' | 'selected' | 'bought'
   bought_at: string | null
   payment_method_id?: string | null
-  installments?: number | null
-  payment_methods?: {
-    name: string | null
-  } | null
+  payment_methods?: { name: string | null }[] | null
+  installments?: number
 }
 
 type PaymentMethod = {
@@ -351,9 +349,10 @@ export default function Items({
                     <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">
                       comprado
                     </span>
-                    {i.payment_methods?.name && (
+                    {i.payment_methods?.[0]?.name && (
+                      
                       <span className="text-xs text-gray-600">
-                        via {i.payment_methods.name}
+                        via {i.payment_methods?.[0]?.name ?? '—'}
                         {i.installments && i.installments > 1
                           ? ` (${i.installments}x)`
                           : ''}
