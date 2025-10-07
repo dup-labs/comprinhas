@@ -19,11 +19,6 @@ const ListItem = ({onRename,onDelete,item,index,listLength}:any) => {
       </div>
       </Link>
       <div className="flex gap-3 justify-end w-full">
-        {/* <button 
-          className="text-sm px-2 py-1 border rounded"
-          onClick={() => onRename(item.id)}>
-          Renomear
-        </button> */}
         <button 
           className="text-sm px-2 py-1 border rounded"
           onClick={() => onDelete(item.id)}

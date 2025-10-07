@@ -6,8 +6,10 @@ import { useDisclosure } from '@/hooks/useDisclosure'
 import Modal from '@/app/components/Modal'
 import ActionButton from '@/app/components/ActionButton'
 import {
-  PieChart,
-  Pie,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
@@ -297,9 +299,19 @@ export default function Items({ listId, budgetCents }: { listId: string; budgetC
             }`}
                 type="checkbox"
                 checked={i.status === 'selected'}
-                onChange={() => {
+                onChange={async () => {
                   const next = i.status === 'selected' ? 'pending' : 'selected'
-                  supabase.from('items').update({ status: next }).eq('id', i.id).then(load)
+                  const { error } = await supabase
+                    .from('items')
+                    .update({ status: next })
+                    .eq('id', i.id)
+
+                  if (!error) {
+                    await load()
+                    pingSummary() // 👈 atualiza o totalizer sempre
+                  } else {
+                    alert(error.message)
+                  }
                 }}
               />
               <label className="cursor-pointer line-clamp-2 leading-tight flex-1">
@@ -361,7 +373,7 @@ export default function Items({ listId, budgetCents }: { listId: string; budgetC
             <input className="w-32 border rounded p-2" placeholder="Preço" value={price} onChange={e => setPrice(e.target.value)} required />
             <input className="flex-1 border rounded p-2" placeholder="Link (opcional)" value={url} onChange={e => setUrl(e.target.value)} />
           </div>
-          <input className="w-full border rounded p-2" placeholder="Parcelas (1)" type="number" min={1} value={installments} onChange={e => setInstallments(Number(e.target.value))} />
+          {/* <input className="w-full border rounded p-2" placeholder="Parcelas (1)" type="number" min={1} value={installments} onChange={e => setInstallments(Number(e.target.value))} /> */}
           <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="w-full rounded border p-2 bg-white">
             <option value="">Selecione categoria...</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>)}
@@ -375,72 +387,72 @@ export default function Items({ listId, budgetCents }: { listId: string; budgetC
 
       {/* Finalizar compra */}
       <Modal open={paymentModal.open} onClose={paymentModal.closeModal} title="Método de pagamento">
-  <form onSubmit={e => { e.preventDefault(); confirmPaymentMethod() }} className="space-y-3">
-    <select
-      value={selectedPayment}
-      onChange={e => setSelectedPayment(e.target.value)}
-      className="w-full rounded border p-2 bg-white"
-    >
-      <option value="">Selecione...</option>
-      {methods.map(m => (
-        <option key={m.id} value={m.id}>{m.name}</option>
-      ))}
-    </select>
+        <form onSubmit={e => { e.preventDefault(); confirmPaymentMethod() }} className="space-y-3">
+          <select
+            value={selectedPayment}
+            onChange={e => setSelectedPayment(e.target.value)}
+            className="w-full rounded border p-2 bg-white"
+          >
+            <option value="">Selecione...</option>
+            {methods.map(m => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
 
-    {/* só mostra se for crédito */}
-    {methods.find(m => m.id === selectedPayment)?.name?.toLowerCase().includes('crédito') && (
-      <select
-        value={installments}
-        onChange={e => setInstallments(Number(e.target.value))}
-        className="w-full rounded border p-2 bg-white"
-      >
-        {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
-          <option key={n} value={n}>{n}x</option>
-        ))}
-      </select>
-    )}
+          {/* só mostra se for crédito */}
+          {methods.find(m => m.id === selectedPayment)?.name?.toLowerCase().includes('crédito') && (
+            <select
+              value={installments}
+              onChange={e => setInstallments(Number(e.target.value))}
+              className="w-full rounded border p-2 bg-white"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
+                <option key={n} value={n}>{n}x</option>
+              ))}
+            </select>
+          )}
 
-    <div className="flex justify-end gap-2 pt-2">
-      <button type="button" onClick={paymentModal.closeModal} className="border px-3 py-2 rounded">Cancelar</button>
-      <button type="submit" className="bg-green-600 text-white px-3 py-2 rounded">Confirmar</button>
-    </div>
-  </form>
-</Modal>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={paymentModal.closeModal} className="border px-3 py-2 rounded">Cancelar</button>
+            <button type="submit" className="bg-green-600 text-white px-3 py-2 rounded">Confirmar</button>
+          </div>
+        </form>
+      </Modal>
 
 
       {/* Editar pagamento */}
       <Modal open={editPaymentModal.open} onClose={editPaymentModal.closeModal} title="Editar pagamento">
-  <form onSubmit={updatePayment} className="space-y-3">
-    <select
-      value={editSelectedPayment}
-      onChange={e => setEditSelectedPayment(e.target.value)}
-      className="w-full border rounded p-2 bg-white"
-    >
-      <option value="">Selecione método...</option>
-      {methods.map(m => (
-        <option key={m.id} value={m.id}>{m.name}</option>
-      ))}
-    </select>
+        <form onSubmit={updatePayment} className="space-y-3">
+          <select
+            value={editSelectedPayment}
+            onChange={e => setEditSelectedPayment(e.target.value)}
+            className="w-full border rounded p-2 bg-white"
+          >
+            <option value="">Selecione método...</option>
+            {methods.map(m => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
 
-    {/* só mostra se for crédito */}
-    {methods.find(m => m.id === editSelectedPayment)?.name?.toLowerCase().includes('crédito') && (
-      <select
-        value={editInstallments}
-        onChange={e => setEditInstallments(Number(e.target.value))}
-        className="w-full border rounded p-2 bg-white"
-      >
-        {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
-          <option key={n} value={n}>{n}x</option>
-        ))}
-      </select>
-    )}
+          {/* só mostra se for crédito */}
+          {methods.find(m => m.id === editSelectedPayment)?.name?.toLowerCase().includes('crédito') && (
+            <select
+              value={editInstallments}
+              onChange={e => setEditInstallments(Number(e.target.value))}
+              className="w-full border rounded p-2 bg-white"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
+                <option key={n} value={n}>{n}x</option>
+              ))}
+            </select>
+          )}
 
-    <div className="flex justify-end gap-2">
-      <button type="button" onClick={editPaymentModal.closeModal} className="border px-3 py-2 rounded">Cancelar</button>
-      <button type="submit" className="bg-green-600 text-white px-3 py-2 rounded">Salvar</button>
-    </div>
-  </form>
-</Modal>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={editPaymentModal.closeModal} className="border px-3 py-2 rounded">Cancelar</button>
+            <button type="submit" className="bg-green-600 text-white px-3 py-2 rounded">Salvar</button>
+          </div>
+        </form>
+      </Modal>
 
 
       {/* Editar categoria */}
@@ -458,13 +470,16 @@ export default function Items({ listId, budgetCents }: { listId: string; budgetC
       </Modal>
 
       {/* Gráfico */}
+      {/* gráfico */}
       {items.length > 0 && (
         <div className="bg-white rounded-2xl shadow-gray-200 shadow-md p-4 mt-8">
           <div className="flex justify-between items-center mb-2">
-            <h3 className="font-semibold text-gray-700 text-sm">Distribuição por categoria</h3>
+            <h3 className="font-semibold text-gray-700 text-sm">
+              Distribuição por categoria
+            </h3>
             <select
               value={viewMode}
-              onChange={e => setViewMode(e.target.value as 'month' | 'all')}
+              onChange={(e) => setViewMode(e.target.value as 'month' | 'all')}
               className="text-xs border rounded p-1"
             >
               <option value="month">Mês atual</option>
@@ -472,36 +487,89 @@ export default function Items({ listId, budgetCents }: { listId: string; budgetC
             </select>
           </div>
 
-          <ResponsiveContainer width="100%" height={240}>
-            <PieChart>
-              <Pie
-                data={Object.entries(
-                  virtualizedItems()
-                    .filter(i => i.status === 'bought')
-                    .filter(i => {
-                      if (viewMode === 'all') return true
-                      const t = new Date(i.bought_at!).getTime()
-                      return t >= monthStart && t < monthEnd
-                    })
-                    .reduce((acc: Record<string, number>, i) => {
-                      const cat = i.category?.name || 'Sem categoria'
-                      acc[cat] = (acc[cat] || 0) + i.price_cents / 100
-                      return acc
-                    }, {})
-                ).map(([name, value]) => ({ name, value: Number(value) }))}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                fill="#8884d8"
-                label={({ name, value }: any) => `${name} (${value.toFixed(2)} R$)`}
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart
+              data={Object.entries(
+                virtualizedItems()
+                  .filter((i) => i.status === 'bought')
+                  .filter((i) => {
+                    if (viewMode === 'all') return true
+                    const t = new Date(i.bought_at!).getTime()
+                    return t >= monthStart && t < monthEnd
+                  })
+                  .reduce((acc: Record<string, number>, i) => {
+                    const cat = i.category?.name || 'Sem categoria'
+                    acc[cat] = (acc[cat] || 0) + i.price_cents / 100
+                    return acc
+                  }, {})
+              ).map(([name, value]) => ({ name, value: Number(value) }))}
+              margin={{ top: 10, right: 10, bottom: 30, left: 0 }}
+            >
+              <Tooltip
+                formatter={(v: number) => `R$ ${v.toFixed(2)}`}
+                contentStyle={{ fontSize: '12px' }}
               />
-              <Tooltip formatter={(v: number) => `R$ ${v.toFixed(2)}`} contentStyle={{ fontSize: '12px' }} />
-            </PieChart>
+              <XAxis dataKey="name" angle={-25} textAnchor="end" height={50} />
+              <YAxis />
+              <Bar dataKey="value" fill="#8884d8" radius={[4, 4, 0, 0]} />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       )}
+
+      {/* gráfico por método de pagamento */}
+      {items.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-gray-200 shadow-md p-4 mt-8">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-semibold text-gray-700 text-sm">
+              Distribuição por método de pagamento
+            </h3>
+            <select
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value as 'month' | 'all')}
+              className="text-xs border rounded p-1"
+            >
+              <option value="month">Mês atual</option>
+              <option value="all">Geral</option>
+            </select>
+          </div>
+
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart
+              data={Object.entries(
+                virtualizedItems()
+                  .filter((i) => i.status === 'bought')
+                  .filter((i) => {
+                    if (viewMode === 'all') return true
+                    const t = new Date(i.bought_at!).getTime()
+                    return t >= monthStart && t < monthEnd
+                  })
+                  .reduce((acc: Record<string, number>, i) => {
+                    const methods = i.payment_methods as { name: string | null }[] | { name: string | null } | null
+
+                    const method = Array.isArray(methods)
+                      ? methods[0]?.name || 'Sem método'
+                      : methods?.name || 'Sem método'
+
+                    acc[method] = (acc[method] || 0) + i.price_cents / 100
+                    return acc
+                  }, {})
+              ).map(([name, value]) => ({ name, value: Number(value) }))}
+              margin={{ top: 10, right: 10, bottom: 30, left: 0 }}
+            >
+              <Tooltip
+                formatter={(v: number) => `R$ ${v.toFixed(2)}`}
+                contentStyle={{ fontSize: '12px' }}
+              />
+              <XAxis dataKey="name" angle={-25} textAnchor="end" height={50} />
+              <YAxis />
+              <Bar dataKey="value" fill="#82ca9d" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+
     </section>
   )
 }
