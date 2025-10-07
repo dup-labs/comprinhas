@@ -95,7 +95,18 @@ export default function Items({ listId, budgetCents }: { listId: string; budgetC
       `)
       .eq('list_id', listId)
       .order('created_at', { ascending: false })
-    if (!error && data) setItems(data as Item[])
+          if (!error && data) {
+        // Normaliza os relacionamentos
+        const normalized = data.map((i: any) => ({
+          ...i,
+          payment_methods: Array.isArray(i.payment_methods)
+            ? i.payment_methods
+            : i.payment_methods
+              ? [i.payment_methods]
+              : [],
+        })) as Item[]
+        setItems(normalized)
+      }
   }
 
   async function loadMethods() {
@@ -297,9 +308,9 @@ export default function Items({ listId, budgetCents }: { listId: string; budgetC
               <div className="flex flex-col items-end">
                 <span>{fmt(i.price_cents)}</span>
                 {i.category?.name && <span className="text-xs text-gray-500">{i.category.name}</span>}
-                {i.payment_methods?.name && (
+                {i.payment_methods?.[0]?.name && (
                   <span className="text-xs text-gray-600 italic">
-                    via {i.payment_methods.name}
+                    via {i.payment_methods?.[0].name}
                     {i.installments && i.installments > 1 ? ` • ${i.installments}x` : ''}
                   </span>
                 )}
