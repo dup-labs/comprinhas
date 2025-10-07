@@ -20,7 +20,7 @@ type Item = {
   status: 'pending' | 'selected' | 'bought'
   bought_at: string | null
   payment_method_id?: string | null
-  payment_methods?: { name: string | null } | null
+  payment_methods?: { name: string | null }[] | null
   installments?: number | null
   category_id?: string | null
   category?: { name: string | null } | null
