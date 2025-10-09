@@ -170,7 +170,7 @@ export default function Lists() {
             </button>
             <button
               type="submit"
-              disabled={disableNewList}
+              disabled={!!disableNewList}
               className={`rounded px-3 py-2 text-white ${
                 disableNewList ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-gray-800'
               }`}
