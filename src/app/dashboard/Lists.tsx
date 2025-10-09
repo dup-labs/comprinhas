@@ -114,7 +114,7 @@ export default function Lists() {
             }
             newList.openModal()
           }}
-          disabled={disableNewList}
+          disabled={!!disableNewList}
           className={`flex justify-center min-h-30 gap-3 p-5 pt-6 pb-14 -mt-10 md:-mt-0 bg-white rounded-4xl w-full max-w-full md:max-w-48 md:min-w-92 shadow-[0_-10px_20px_-10px_rgb(0_0_0/.25)] ${
             disableNewList ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
           }`}
