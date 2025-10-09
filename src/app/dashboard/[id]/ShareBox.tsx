@@ -106,8 +106,8 @@ export function ShareBox({ listId, initialEmails }: { listId: string; initialEma
             ? 'Carregando limites do seu plano...'
             : plan === 'premium'
             ? 'Plano Premium: compartilhamento ilimitado 🚀'
-            : `Você pode compartilhar com até ${limits.maxSharedEmails || 0} ${
-                limits.maxSharedEmails === 1 ? 'pessoa' : 'pessoas'
+            : `Você pode compartilhar com até ${limits?.maxSharedEmails ?? 0} ${
+                limits?.maxSharedEmails === 1 ? 'pessoa' : 'pessoas'
               } no plano ${plan}.`}
         </p>
       )}
