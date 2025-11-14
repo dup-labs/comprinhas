@@ -23,7 +23,7 @@ export default function MobileReportSheet({ open, onClose, children }: any) {
       <div className="
         absolute bottom-0 left-0 right-0
          bg-five-gray-light rounded-t-3xl p-6
-        max-h-[90vh] overflow-y-auto
+        max-h-[90dvh] overflow-y-auto
         shadow-xl
         animate-slideUp
       ">
