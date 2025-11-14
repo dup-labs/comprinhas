@@ -356,9 +356,35 @@ export default function ListPageClient({ user, list, listId, budgetCents }: any)
       {/* ======================== MAIN ITEMS ======================== */}
       <section className="w-full md:w-6/8 md:h-dvh md:sticky md:overflow-scroll pb-12 ">
         {isMobile && (
-          <div className='sticky top-0 p-6 pb-2 z-10'>
-            <Summary listId={listId} budgetCents={budgetCents} listName={list.name} isMobile={isMobile} />
-          </div>
+          <>
+            <div className='sticky top-0 p-6 pb-2 z-10'>
+              <Summary listId={listId} budgetCents={budgetCents} listName={list.name} isMobile={isMobile} />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setNewItemOpen(true)}
+                  className="px-3 py-3 bg-five-green-medium text-black rounded-full w-full mt-2 text-xs"
+                >
+                  Adicionar novo item
+                </button>
+                <button
+                  onClick={() => hasSelected && setEditPaymentOpen(true)}
+                  className={`
+                    px-3 py-3 rounded-full w-full text-xs mt-2
+                    ${hasSelected 
+                      ? 'bg-five-green-dark text-white'
+                      : 'bg-five-gray-medium text-five-gray-dark cursor-not-allowed'
+                    }
+                  `}
+                >
+                  {hasSelected 
+                    ? 'Finalizar selecionados' 
+                    : 'Selecione os itens que deseja finalizar'}
+                </button>
+
+              </div>
+            </div>
+          </>
+          
         )}
 
         <Items
