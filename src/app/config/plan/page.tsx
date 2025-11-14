@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClientBrowser } from '@/lib/supabase-browser'
 import { usePlan } from '../../..//hooks/usePlans'
+import Header from '@/app/components/Header'
 
 export default function PlanConfigPage() {
   const supabase = createClientBrowser()
@@ -66,40 +67,48 @@ export default function PlanConfigPage() {
   if (loading) return <p>Carregando plano...</p>
 
   return (
-    <div className="p-6">
-      <h2 className="text-center font-bold text-2xl mb-6">Seu plano atual</h2>
+    <>
+      <Header />
+      <div className="p-6">
+        <h2 className="text-center font-bold text-2xl mb-6">Seu plano atual</h2>
 
-      <div className="flex justify-center gap-6">
-        {['free', 'basic', 'premium'].map((p) => (
-          <div
-            key={p}
-            className={`rounded-2xl border p-6 w-64 text-center ${
-              plan === p ? 'bg-green-50 border-green-500' : 'bg-white'
-            }`}
-          >
-            <h3 className="font-bold capitalize mb-2">{p}</h3>
-            <p className="text-gray-500 text-sm mb-4">
-              {p === 'free' && '2 listas / R$1000 total'}
-              {p === 'basic' && '5 listas / 1 convidado'}
-              {p === 'premium' && 'ilimitado'}
-            </p>
-            <p className="font-medium mb-4">
-              {p === 'free' ? 'Grátis' : p === 'basic' ? 'R$ 8,99/mês' : 'R$ 39,90/mês'}
-            </p>
-            <button
-              disabled={plan === p}
-              onClick={() => handleUpgrade(p as 'basic' | 'premium')}
-              className={`w-full py-2 rounded ${
-                plan === p
-                  ? 'bg-green-100 border border-green-500 text-green-700'
-                  : 'bg-black text-white hover:bg-gray-800'
+        <div className="flex flex-col justify-start md:flex-row md:justify-center gap-6">
+          {['free', 'basic', 'premium'].map((p) => (
+            <div
+              key={p}
+              className={`w-full rounded-2xl border p-6 w-64 text-center ${
+                plan === p ? 'bg-five-green-medium border-five-green-dark text-white' : 'bg-white'
               }`}
             >
-              {plan === p ? 'Ativo ✅' : 'Fazer upgrade'}
-            </button>
-          </div>
-        ))}
+              <h3 className="font-bold capitalize mb-2">{p}</h3>
+              <p className={
+                `text-sm mb-4 ${
+                  plan === p ? 'text-white' : 'text-gray-500'
+                }`
+
+              }>
+                {p === 'free' && '2 listas / R$1000 total'}
+                {p === 'basic' && '5 listas / 1 convidado'}
+                {p === 'premium' && 'ilimitado'}
+              </p>
+              <p className="font-medium mb-4">
+                {p === 'free' ? 'Grátis' : p === 'basic' ? 'R$ 8,99/mês' : 'R$ 39,90/mês'}
+              </p>
+              <button
+                disabled={plan === p}
+                onClick={() => handleUpgrade(p as 'basic' | 'premium')}
+                className={`w-full py-2 rounded ${
+                  plan === p
+                    ? 'bg-five-green-light border-five-green-dark text-black font-bold'
+                    : 'bg-black text-white hover:bg-gray-800'
+                }`}
+              >
+                {plan === p ? 'Ativo ✅' : 'Fazer upgrade'}
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

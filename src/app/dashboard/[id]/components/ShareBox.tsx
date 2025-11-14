@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { createClientBrowser } from '@/lib/supabase-browser'
 import { useRouter } from 'next/navigation'
-import { usePlan } from '../../../hooks/usePlans'
+import { usePlan } from '../../../../hooks/usePlans'
 
 export function ShareBox({ listId, initialEmails }: { listId: string; initialEmails: string[] }) {
   const supabase = createClientBrowser()
@@ -85,11 +85,11 @@ export function ShareBox({ listId, initialEmails }: { listId: string; initialEma
       <ul className="flex flex-wrap gap-2">
         {emails.map((mail) => (
           <li key={mail} className="bg-white p-4 rounded-full shadow-[0_4px_14px_rgba(188,188,188,0.25)] w-full flex justify-between">
-            <span>{mail}</span>
+            <span className='text-sm'>{mail}</span>
             <button
               type="button"
               onClick={() => removeEmail(mail)}
-              className="text-sm bg-gray-100 pl-4 pr-4 rounded-full"
+              className="bg-gray-100 text-xs pl-2 pr-2 rounded-full"
               title="Remover"
             >
               Remover

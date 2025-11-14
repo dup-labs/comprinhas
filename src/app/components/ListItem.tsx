@@ -2,7 +2,7 @@ import Link from "next/link"
 
 const ListItem = ({onDelete,item}:any) => {
   return(
-    <li key={item.id} className={`flex items-start min-h-52 flex-col gap-3 p-5 pt-10 pb-10 -mt-16 md:-mt-0 bg-five-green-light rounded-4xl w-full max-w-full md:max-w-48  md:min-w-92 shadow-[0_-10px_20px_-10px_rgb(0_0_0/.25)]`}>
+    <li key={item.id} className={`flex items-start flex-col gap-3 p-5 pt-10 pb-10 bg-five-green-light rounded-4xl w-full max-w-full md:max-w-48  md:min-w-92 shadow-[0_-5px_10px_-5px_rgb(0_0_0/.25)]`}>
       <Link href={`/dashboard/${item.id}`} className="w-full">
       <div className="flex justify-between w-full items-center mb-2">
         <div className={`font-bold text-2xl`}>

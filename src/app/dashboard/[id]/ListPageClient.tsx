@@ -12,12 +12,14 @@ import CategoryChart from './components/CategoryChart'
 import PaymentMethodChart from './components/PaymentMethodChart'
 
 import { usePlan } from '../../../hooks/usePlans'
-  
 
 import Link from 'next/link'
-import Summary from './Summary'
-import BudgetEditor from './BudgetEditor'
-import { ShareBox } from './ShareBox'
+import Summary from './components/Summary'
+import BudgetEditor from './components/BudgetEditor'
+import { ShareBox } from './components/ShareBox'
+
+import MobileReportSheet from './components/MobileReportSheet'
+import AsideContent from './components/AsideContent'
 
 export default function ListPageClient({ user, list, listId, budgetCents }: any) {
   const supabase = createClientBrowser()
@@ -31,6 +33,14 @@ export default function ListPageClient({ user, list, listId, budgetCents }: any)
   const [categories, setCategories] = useState<any[]>([])
   const [viewMode, setViewMode] = useState<'month' | 'all'>('month')
 
+  // Mobile drawer
+  const [showReport, setShowReport] = useState(false)
+  // const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+  const [isMobile, setIsMobile] = useState(false)
+
+
+
+
   // States modais
   const [newItemOpen, setNewItemOpen] = useState(false)
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
@@ -40,16 +50,17 @@ export default function ListPageClient({ user, list, listId, budgetCents }: any)
   const [itemToEditCategory, setItemToEditCategory] = useState(null)
   const [itemToEditPayment, setItemToEditPayment] = useState(null)
 
-  const { plan, limits, loading: planLoading, error: planError } = usePlan()
+  const { plan, loading: planLoading } = usePlan()
 
   const hasSelected = useMemo(
-  () => items.some(i => i.status === 'selected'),
-  [items]
-)
+    () => items.some(i => i.status === 'selected'),
+    [items]
+  )
 
   const pingSummary = () =>
     window.dispatchEvent(new CustomEvent('items-changed', { detail: listId }))
 
+  // LOAD
   async function loadItems() {
     const { data } = await supabase
       .from('items')
@@ -102,13 +113,24 @@ export default function ListPageClient({ user, list, listId, budgetCents }: any)
     loadCategories()
   }, [listId])
 
-  // === FILTRAGEM POR MÊS ===
+  useEffect(() => {
+  function checkMobile() {
+    setIsMobile(window.innerWidth < 768)
+  }
 
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+  return () => window.removeEventListener('resize', checkMobile)
+}, [])
+
+  // === Virtualização de parcelas ===
   function virtualizedItems() {
     const virtual: any[] = []
+
     items.forEach(i => {
-      if (i.status !== 'bought' || !i.installments || i.installments <= 1 || !i.bought_at) return
-      
+      if (i.status !== 'bought' || !i.installments || i.installments <= 1 || !i.bought_at)
+        return
+
       const boughtDate = new Date(i.bought_at)
 
       for (let n = 1; n <= i.installments; n++) {
@@ -126,7 +148,7 @@ export default function ListPageClient({ user, list, listId, budgetCents }: any)
 
     return [
       ...items.filter(i => !i.installments || i.installments <= 1),
-      ...virtual
+      ...virtual,
     ]
   }
 
@@ -137,18 +159,19 @@ export default function ListPageClient({ user, list, listId, budgetCents }: any)
 
   const y = parseInt(monthParam.slice(0, 4), 10)
   const m = parseInt(monthParam.slice(5, 7), 10)
+
   const monthStart = Date.UTC(y, m - 1, 1)
   const monthEnd = Date.UTC(m === 12 ? y + 1 : y, m % 12, 1)
 
-  // === 🚨 CORREÇÃO DO BUG DO ITEM SUMIR ===
+  // === ITENS FILTRADOS ===
   const filteredItems = useMemo(() => {
     const all = virtualizedItems()
 
     if (viewMode === 'all') return all
 
     return all.filter(i => {
-      if (i.status === 'pending') return true  // aparece sempre
-      if (i.status === 'selected') return true // aparece sempre
+      if (i.status === 'pending') return true
+      if (i.status === 'selected') return true
 
       if (i.status === 'bought') {
         const t = new Date(i.bought_at!).getTime()
@@ -160,7 +183,6 @@ export default function ListPageClient({ user, list, listId, budgetCents }: any)
   }, [items, monthParam, viewMode])
 
   // CRUD
-
   async function addItem(data: any) {
     const { error } = await supabase.from('items').insert({
       list_id: listId,
@@ -231,98 +253,114 @@ export default function ListPageClient({ user, list, listId, budgetCents }: any)
 
   // === UI ===
   return (
-    <main className="w-full mx-auto space-y-4 flex">
-      <aside className="w-2/8 space-y-4 bg-five-gray-light p-6 h-dvh sticky overflow-scroll pr-8 mb-0">
-        <Link href="/dashboard" className="underline">← Voltar</Link>
-        <h1 className="text-xl font-semibold">{list.name}</h1>
+    <main className="w-full mx-auto flex">
 
-        <button
-          onClick={() => setNewItemOpen(true)}
-          className="px-3 py-3 bg-five-green-medium text-black rounded-full w-full"
-        >
-          Adicionar novo item
-        </button>
+      {/* ======================== DESKTOP ASIDE ======================== */}
+      {!isMobile && (
+        <aside className="w-full md:w-2/8 space-y-4 bg-five-gray-light p-6 h-dvh sticky overflow-scroll pr-8 mb-0">
 
-        
+          <Link href="/dashboard" className="underline">← Voltar</Link>
+          <h1 className="text-xl font-semibold">{list.name}</h1>
+
           <button
-              onClick={() => setEditPaymentOpen(true)}
-              className={
-                `px-3 py-3 rounded-full w-full transition-all duration-200
-                ${hasSelected 
-                    ? 'bg-five-green-dark text-white' 
-                    : 'bg-five-gray-medium text-five-gray-dark cursor-not-allowed'
-                }`
+            onClick={() => setNewItemOpen(true)}
+            className="px-3 py-3 bg-five-green-medium text-black rounded-full w-full"
+          >
+            Adicionar novo item
+          </button>
+
+          <button
+            onClick={() => hasSelected && setEditPaymentOpen(true)}
+            className={`
+              px-3 py-3 rounded-full w-full transition-all duration-200
+              ${hasSelected 
+                ? 'bg-five-green-dark text-white'
+                : 'bg-five-gray-medium text-five-gray-dark cursor-not-allowed'
               }
-            >
-              {hasSelected ? 'Finalizar selecionados': 'Selecione os itens que deseja finalizar'}
-            </button>
+            `}
+          >
+            {hasSelected 
+              ? 'Finalizar selecionados' 
+              : 'Selecione os itens que deseja finalizar'}
+          </button>
 
-        
+          <Summary listId={listId} budgetCents={budgetCents} listName={list.name} isMobile={isMobile} />
 
-        <p className="flex justify-between text-sm">
-          {/* <span>Orçamento: R$ {(budgetCents / 100).toFixed(2)}</span> */}
-          
-        </p>
+          <p className="text-sm text-gray-500">
+            Criado por{' '}
+            {list.owner_email
+              ? user?.email === list.owner_email
+                ? 'você'
+                : list.owner_email
+              : user?.id === list.owner_id
+                ? 'você'
+                : 'desconhecido'}
+          </p>
 
-        <Summary listId={listId} budgetCents={budgetCents} listName={list.name} />
+          <ShareBox listId={listId} initialEmails={list.shared_emails ?? []} />
 
-        <p className="text-sm text-gray-500">
-          Criado por{' '}
-          {list.owner_email
-            ? user?.email === list.owner_email
-              ? 'você'
-              : list.owner_email
-            : user?.id === list.owner_id
-              ? 'você'
-              : 'desconhecido'}
-        </p>
-
-        <ShareBox listId={listId} initialEmails={list.shared_emails ?? []} />
-
-        {planLoading ? 
-            'Carregando limites do seu plano...'
-          : 
-            <div className="relative">
-              <div className={
-                plan !== 'premium'
-                  ? 'pointer-events-none blur-sm'
-                  : ''
+          {/* GRÁFICOS COM BLOQUEIO DO PLANO */}
+          {planLoading 
+            ? 'Carregando limites do seu plano...'
+            : (
+              <div className="relative">
+                <div className={
+                  plan !== 'premium'
+                    ? 'pointer-events-none blur-sm'
+                    : ''
                 }>
-                <CategoryChart
-                  items={items}
-                  viewMode={viewMode}
-                  setViewMode={setViewMode}
-                  monthParam={monthParam}
-                />
-        
-                <PaymentMethodChart
-                  items={items}
-                  viewMode={viewMode}
-                  setViewMode={setViewMode}
-                  monthParam={monthParam}
-                />
-              </div>
+                  <CategoryChart
+                    items={items}
+                    viewMode={viewMode}
+                    setViewMode={setViewMode}
+                    monthParam={monthParam}
+                  />
 
-              {plan !== 'premium' && (
+                  <PaymentMethodChart
+                    items={items}
+                    viewMode={viewMode}
+                    setViewMode={setViewMode}
+                    monthParam={monthParam}
+                  />
+                </div>
+
+                {plan !== 'premium' && (
                   <div className="absolute inset-0 flex items-center justify-center flex-col p-10 text-center gap-4 bg-white/40 backdrop-blur-sm rounded-xl">
-                    Quer dados detalhados sobre seus gastos? 
+                    Quer dados detalhados sobre seus gastos?
                     <button
                       onClick={() => router.push('/config/plan')}
                       className="px-4 py-2 bg-black text-white rounded-full"
                     >
-                     Clique aqui e atualize seu plano
+                      Clique aqui e atualize seu plano
                     </button>
                   </div>
-                )
-              }
-            </div>
-          
+                )}
+              </div>
+            )
           }
+        </aside>
+      )}
 
-        {/* gráficos */}
-      </aside>
+      {/* ======================== MOBILE BUTTON ======================== */}
+      {isMobile && (
+        <div className="fixed bottom-4 left-0 right-0 z-30 flex justify-center">
+          <button
+            onClick={() => setShowReport(true)}
+            className="px-4 py-3 bg-five-green-dark text-white rounded-full shadow-lg"
+          >
+            Ver relatório
+          </button>
+        </div>
+      )}
 
-      <section className="w-6/8">
+      {/* ======================== MAIN ITEMS ======================== */}
+      <section className="w-full md:w-6/8 md:h-dvh md:sticky md:overflow-scroll pb-12 ">
+        {isMobile && (
+          <div className='sticky top-0 p-6 pb-2 z-10'>
+            <Summary listId={listId} budgetCents={budgetCents} listName={list.name} isMobile={isMobile} />
+          </div>
+        )}
+
         <Items
           items={filteredItems}
           onAdd={() => setNewItemOpen(true)}
@@ -340,7 +378,23 @@ export default function ListPageClient({ user, list, listId, budgetCents }: any)
         />
       </section>
 
-      {/* MODAIS */}
+      {/* ======================== MOBILE SHEET ======================== */}
+      <MobileReportSheet open={showReport} onClose={() => setShowReport(false)}>
+        <AsideContent
+        isMobile={isMobile}
+          user={user}
+          list={list}
+          listId={listId}
+          budgetCents={budgetCents}
+          items={items}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          monthParam={monthParam}
+          onNewItem={() => setNewItemOpen(true)}
+        />
+      </MobileReportSheet>
+
+      {/* ======================== MODAIS ======================== */}
       <NewItemModal
         open={newItemOpen}
         onClose={() => setNewItemOpen(false)}

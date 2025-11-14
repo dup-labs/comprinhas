@@ -2,8 +2,9 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { createClientBrowser } from '@/lib/supabase-browser'
-import MonthYearPicker from './components/MonthYearPicker'
+import MonthYearPicker from './MonthYearPicker'
 import BudgetEditor from './BudgetEditor'
+import Link from 'next/link'
 
 type Row = {
   price_cents: number
@@ -12,74 +13,7 @@ type Row = {
   installments: number | null
 }
 
-function MonthPickerBR({
-  valueYYYYMM,
-  onChange,
-}: {
-  valueYYYYMM: string
-  onChange: (nextYYYYMM: string) => void
-}) {
-  const months = [
-    'janeiro','fevereiro','março','abril','maio','junho',
-    'julho','agosto','setembro','outubro','novembro','dezembro'
-  ]
-
-  const initialYear = Number(valueYYYYMM?.slice(0, 4)) || new Date().getUTCFullYear()
-  const initialMonth = Number(valueYYYYMM?.slice(5, 7)) || (new Date().getUTCMonth() + 1)
-
-  const [year, setYear] = useState<number>(initialYear)
-  const [month, setMonth] = useState<number>(initialMonth)
-
-  useEffect(() => {
-    const y = Number(valueYYYYMM?.slice(0, 4)) || initialYear
-    const m = Number(valueYYYYMM?.slice(5, 7)) || initialMonth
-    setYear(y)
-    setMonth(m)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [valueYYYYMM])
-
-  function emit(y: number, m: number) {
-    const mm = String(m).padStart(2, '0')
-    onChange(`${y}-${mm}`)
-  }
-
-  return (
-    <div className="flex items-center gap-2">
-      <label htmlFor="month-select" className="text-sm font-medium">Mês:</label>
-      <select
-        id="month-select"
-        aria-label="Mês"
-        value={month}
-        onChange={(e) => {
-          const m = Number(e.target.value)
-          setMonth(m)
-          emit(year, m)
-        }}
-        className="border rounded px-2 py-1 bg-white"
-      >
-        {months.map((nome, idx) => (
-          <option key={idx + 1} value={idx + 1}>
-            {nome}
-          </option>
-        ))}
-      </select>
-
-      <input
-        aria-label="Ano"
-        type="number"
-        value={year}
-        onChange={(e) => {
-          const y = Number(e.target.value) || year
-          setYear(y)
-          emit(y, month)
-        }}
-        className="w-24 border rounded px-2 py-1 bg-white"
-      />
-    </div>
-  )
-}
-
-export default function Summary({ listId, budgetCents,listName }: { listId: string; budgetCents: number ,listName: string}) {
+export default function Summary({ listId, budgetCents,listName,isMobile }: { listId: string; budgetCents: number ,listName: string,isMobile:boolean}) {
   const supabase = createClientBrowser()
   const [rows, setRows] = useState<Row[]>([])
 
@@ -197,7 +131,7 @@ export default function Summary({ listId, budgetCents,listName }: { listId: stri
     showPending && selectedVisibleCents > budgetCents - totalMonthCents
 
   return (
-    <div className="p-4 bg-white rounded-2xl text-purple-950 mb-0">
+    <div className="p-4 bg-white rounded-2xl text-black-950 mb-0 shadow-[0_4px_14px_rgba(188,188,188,0.25)]">
       {/* Controles */}
       {/* <div className="flex items-center gap-4">
         <MonthPickerBR
@@ -227,6 +161,10 @@ export default function Summary({ listId, budgetCents,listName }: { listId: stri
           </label>
         </div>
       </div> */}
+
+      {isMobile && (
+        <Link href="/dashboard" className="underline">← Voltar</Link>
+      )}
 
       <MonthYearPicker
         selectedMonth={month}
@@ -259,20 +197,12 @@ export default function Summary({ listId, budgetCents,listName }: { listId: stri
       </div>
       <div className="progress">
         <div className="w-full h-4 bg-five-green-medium rounded-full overflow-hidden">
-        <div
-          className="h-full bg-five-green-dark rounded-full"
-          style={{ width: `${spentPercent}%` }}
-        />
+          <div
+            className="h-full bg-five-green-dark rounded-full"
+            style={{ width: `${spentPercent}%` }}
+          />
+        </div>
       </div>
-      </div>
-      {/* <div className="mt-3 font-semibold text-base">Resumo do mês</div>
-      <div>💰 Orçamento: <b>{fmt(budgetCents)}</b></div>
-      <div>🧾 Gastos parcelados: <b>{fmt(installmentsMonthCents)}</b> ({getPct(installmentsMonthCents)})</div>
-      <div>🛒 Compras feitas no mês: <b>{fmt(boughtMonthCents)}</b> ({getPct(boughtMonthCents)})</div>
-      <div>📊 Total de gastos do mês: <b>{fmt(totalMonthCents)}</b> ({getPct(totalMonthCents)})</div>
-      <div className={remainingCents < 0 ? 'text-red-600 font-semibold' : 'text-green-700 font-semibold'}>
-        ✅ Saldo disponível: <b>{fmt(remainingCents)}</b> ({getPct(remainingCents)})
-      </div> */}
 
       {showPending && (
         <div>

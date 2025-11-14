@@ -12,17 +12,11 @@ export default function Items({
 
   return (
     <section className="p-8">
-      {/* <div className="flex items-center justify-between gap-2">
-        <button onClick={onAdd} className="px-3 py-3 bg-white rounded shadow">
-          Novo item
-        </button>
-      </div> */}
-
-      <ul className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <ul className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.map((i: any) => (
           <li
             key={i.id}
-            className={`bg-white p-4 rounded shadow ${
+            className={`bg-white p-4 rounded-2xl shadow mb-2 ${
               i.status === 'bought' ? 'opacity-50 bg-green-100' : ''
             }`}
           >
