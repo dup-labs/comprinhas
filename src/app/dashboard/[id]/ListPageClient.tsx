@@ -329,11 +329,11 @@ export default function ListPageClient({ user, list, listId, budgetCents }: any)
           onToggleSelect={toggleSelect}
           onDelete={deleteItem}
           onUndo={undo}
-          onEditCategory={(item) => {
+          onEditCategory={(item:any) => {
             setItemToEditCategory(item)
             setCategoryModalOpen(true)
           }}
-          onEditPayment={(item) => {
+          onEditPayment={(item:any) => {
             setItemToEditPayment(item)
             setPaymentModalOpen(true)
           }}
@@ -361,7 +361,7 @@ export default function ListPageClient({ user, list, listId, budgetCents }: any)
         onClose={() => setPaymentModalOpen(false)}
         methods={methods}
         item={itemToEditPayment}
-        onSave={(paymentId, installments) =>
+        onSave={(paymentId:any, installments:any) =>
           finalizeSelected(paymentId, installments)
         }
       />
