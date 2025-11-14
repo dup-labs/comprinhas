@@ -17,8 +17,8 @@ export default async function Home() {
 
   // não logado → mostra logo + botão
   return (
-    <main className="flex h-dvh flex-col items-center justify-center gap-10 p-6">
-      <img src="/logo.svg" alt="Comprinhas" className="h-24 w-auto" />
+    <main className="bg-[url('/five-bg-login.png')] bg-cover bg-right-bottom flex h-dvh flex-col items-end justify-between gap-10 p-72">
+      <img src="/logo-login.svg" alt="Comprinhas" className="h-24 w-auto" />
       <LoginButton />
     </main>
   )

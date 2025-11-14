@@ -48,10 +48,10 @@ export default function BudgetEditor({
   return (
     <>
       <button
-        className="rounded border px-3 py-2"
+        className="rounded-full text-xs bg-five-green-light text-black pl-2 pr-2 ml-2 w-5/8"
         onClick={modal.openModal}
       >
-        Editar orçamento
+          Editar
       </button>
 
       <Modal open={modal.open} onClose={modal.closeModal} title="Editar orçamento">

@@ -18,10 +18,9 @@ const Header = () => {
   }, [])
 
   return (
-    <header className="flex justify-between items-center p-6 border-b bg-white relative">
+    <header className="flex justify-between items-center p-6 border-b bg-five-green-medium relative">
       <h1 className="flex gap-2 items-center">
-        <img src="/logo.svg" alt="Five" className="h-10 w-auto" />
-        <span className="font-semibold text-2xl">Five</span>
+        <img src="/logo-header.svg" alt="Five" className="h-10 w-auto" />
       </h1>
 
       {/* Menu */}
@@ -66,10 +65,12 @@ const Header = () => {
             <form
               action="/auth/signout"
               method="post"
-              onSubmit={() => setMenuOpen(false)}
-            >
+              >
               <button
                 type="submit"
+                onClick={() => {
+                  setTimeout(() => setMenuOpen(false), 100)
+                }}
                 className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
               >
                 🚪 Sair

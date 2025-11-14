@@ -60,55 +60,60 @@ export function ShareBox({ listId, initialEmails }: { listId: string; initialEma
   }
 
   return (
-    <div className="rounded-2xl border p-3 space-y-3">
+    <div className="rounded-2xl p-6 space-y-3 bg-white">
       <h3 className="font-medium">Compartilhar por e-mail</h3>
-      <form onSubmit={addEmail} className="flex gap-2">
+      <form onSubmit={addEmail} className="flex gap-2 mb-6">
         <input
-          className="flex-1 rounded border p-2"
+          className="flex-1 rounded-full bg-gray-50 border-gray-300 border-1 p-2"
           placeholder="ex: lari@gmail.com"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={planLoading || (limits?.maxSharedEmails === 0 && plan === 'free')}
         />
         <button
-          className={`rounded px-3 py-2 text-white ${
+          className={`rounded-full px-3 py-2 text-white ${
             planLoading || (limits?.maxSharedEmails === 0 && plan === 'free')
               ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-black hover:bg-gray-800'
+              : 'bg-five-green-medium hover:bg-five-green-dark'
           }`}
           disabled={planLoading || (limits?.maxSharedEmails === 0 && plan === 'free')}
         >
-          Adicionar
+          Convidar
         </button>
       </form>
 
       <ul className="flex flex-wrap gap-2">
         {emails.map((mail) => (
-          <li key={mail} className="flex items-center gap-2 rounded-full border px-3 py-1">
+          <li key={mail} className="bg-white p-4 rounded-full shadow-[0_4px_14px_rgba(188,188,188,0.25)] w-full flex justify-between">
             <span>{mail}</span>
             <button
               type="button"
               onClick={() => removeEmail(mail)}
-              className="text-sm opacity-70 hover:opacity-100"
+              className="text-sm bg-gray-100 pl-4 pr-4 rounded-full"
               title="Remover"
             >
-              ×
+              Remover
             </button>
           </li>
         ))}
-        {emails.length === 0 && <li className="text-sm text-gray-500">Sem compartilhamento.</li>}
+        {emails.length === 0 && <li className="bg-white p-4 rounded-full shadow-[0_4px_14px_rgba(188,188,188,0.25)] w-full flex justify-center">Sem compartilhamento.</li>}
       </ul>
 
       {/* feedback do limite */}
       {limits?.maxSharedEmails !== null && (
-        <p className="text-xs text-gray-600">
-          {planLoading
-            ? 'Carregando limites do seu plano...'
-            : plan === 'premium'
-            ? 'Plano Premium: compartilhamento ilimitado 🚀'
-            : `Você pode compartilhar com até ${limits?.maxSharedEmails ?? 0} ${
-                limits?.maxSharedEmails === 1 ? 'pessoa' : 'pessoas'
-              } no plano ${plan}.`}
+        <p className="text-xs text-gray-600 text-center">
+          {planLoading ? 
+            'Carregando limites do seu plano...'
+          : 
+            plan === 'premium' ? 
+              <span>
+                Plano Premium: compartilhamento ilimitado 🚀
+              </span>
+            : 
+              <span className='text-center'>
+                Você pode compartilhar com até <strong> {limits?.maxSharedEmails ?? 0} {limits?.maxSharedEmails === 1 ? 'pessoa' : 'pessoas'} </strong> no plano <strong>{plan}</strong>.
+              </span>
+          }
         </p>
       )}
     </div>

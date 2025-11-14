@@ -2,6 +2,8 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { createClientBrowser } from '@/lib/supabase-browser'
+import MonthYearPicker from './components/MonthYearPicker'
+import BudgetEditor from './BudgetEditor'
 
 type Row = {
   price_cents: number
@@ -77,7 +79,7 @@ function MonthPickerBR({
   )
 }
 
-export default function Summary({ listId, budgetCents }: { listId: string; budgetCents: number }) {
+export default function Summary({ listId, budgetCents,listName }: { listId: string; budgetCents: number ,listName: string}) {
   const supabase = createClientBrowser()
   const [rows, setRows] = useState<Row[]>([])
 
@@ -139,6 +141,8 @@ export default function Summary({ listId, budgetCents }: { listId: string; budge
     const monthStart = Date.UTC(y, m - 1, 1)
     const monthEnd = Date.UTC(m === 12 ? y + 1 : y, m % 12, 1)
 
+    
+
     function inSelectedMonth(iso: string | null) {
       if (!iso) return false
       const t = new Date(iso).getTime()
@@ -173,6 +177,7 @@ export default function Summary({ listId, budgetCents }: { listId: string; budge
     const totalMonth = boughtMonth + installmentsMonth
     const remaining = budgetCents - totalMonth - selectedVisible
 
+
     return {
       selectedVisibleCents: selectedVisible,
       boughtMonthCents: boughtMonth,
@@ -186,13 +191,15 @@ export default function Summary({ listId, budgetCents }: { listId: string; budge
   const getPct = (v: number) =>
     budgetCents > 0 ? `${((v / budgetCents) * 100).toFixed(1)}%` : '0%'
 
+  const spentPercent = (totalMonthCents / budgetCents) * 100
+
   const over =
     showPending && selectedVisibleCents > budgetCents - totalMonthCents
 
   return (
-    <div className="rounded p-4 bg-purple-100 text-purple-950 mb-0">
+    <div className="p-4 bg-white rounded-2xl text-purple-950 mb-0">
       {/* Controles */}
-      <div className="flex items-center gap-4">
+      {/* <div className="flex items-center gap-4">
         <MonthPickerBR
           valueYYYYMM={month}
           onChange={(next) => {
@@ -219,17 +226,53 @@ export default function Summary({ listId, budgetCents }: { listId: string; budge
             Exibir pendentes
           </label>
         </div>
-      </div>
+      </div> */}
+
+      <MonthYearPicker
+        selectedMonth={month}
+        listName={listName}
+        onChange={(v) => {
+          router.push(`?month=${v}`)
+        }}
+      />
 
       {/* Resumo */}
-      <div className="mt-3 font-semibold text-base">Resumo do mês</div>
+      <div className='flex justify-between mb-6 mt-6'>
+        <div className='flex flex-col w-1/3 items-center text-five-green-medium text-center'>
+          <span className='text-black font-bold'>
+            Orçamento
+            </span>
+          <strong className='text-md'>{fmt(budgetCents)}</strong>
+          <BudgetEditor
+              listId={listId}
+              initialBudgetCents={budgetCents}
+            />
+        </div>
+        <div className='flex flex-col w-1/3 items-center  text-five-gray-dark text-center'>
+          <span className='text-black font-bold'>Gasto</span>
+          <strong className='text-md'>{fmt(totalMonthCents)}</strong>
+        </div>
+        <div className='flex flex-col w-1/3 items-center text-five-green-dark text-center'>
+          <span className='text-black font-bold'>Disponível</span>
+          <strong className='text-md'>{fmt(remainingCents)}</strong>
+        </div>
+      </div>
+      <div className="progress">
+        <div className="w-full h-4 bg-five-green-medium rounded-full overflow-hidden">
+        <div
+          className="h-full bg-five-green-dark rounded-full"
+          style={{ width: `${spentPercent}%` }}
+        />
+      </div>
+      </div>
+      {/* <div className="mt-3 font-semibold text-base">Resumo do mês</div>
       <div>💰 Orçamento: <b>{fmt(budgetCents)}</b></div>
       <div>🧾 Gastos parcelados: <b>{fmt(installmentsMonthCents)}</b> ({getPct(installmentsMonthCents)})</div>
       <div>🛒 Compras feitas no mês: <b>{fmt(boughtMonthCents)}</b> ({getPct(boughtMonthCents)})</div>
       <div>📊 Total de gastos do mês: <b>{fmt(totalMonthCents)}</b> ({getPct(totalMonthCents)})</div>
       <div className={remainingCents < 0 ? 'text-red-600 font-semibold' : 'text-green-700 font-semibold'}>
         ✅ Saldo disponível: <b>{fmt(remainingCents)}</b> ({getPct(remainingCents)})
-      </div>
+      </div> */}
 
       {showPending && (
         <div>
